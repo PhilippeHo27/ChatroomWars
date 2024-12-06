@@ -10,9 +10,14 @@ namespace Core
     {
         private WebSocket _webSocket;
         [SerializeField] private WebSocketChatHandler chatHandler;
-        [SerializeField] private string serverUrl = "ws://18.226.150.199:8080";
+        private const string ServerUrlHttPs = "wss://18.226.150.199/ws";
+        private const string ServerUrlHttp = "ws://18.226.150.199:8080";
+
+        //private string serverUrl = "wss://18.226.150.199:443/ws";
+        //private string serverUrl = "wss://18.226.150.199/ws";
+        //private string serverUrl = "wss://18.226.150.199:443";
         
-        private Queue<UnityAction> _actions = new Queue<UnityAction>();
+        private readonly Queue<UnityAction> _actions = new Queue<UnityAction>();
 
         private void Update()
         {
@@ -39,8 +44,18 @@ namespace Core
             }
         }
 
-        async public void Connect()
+        async public void Connect(string s)
         {
+            var serverUrl = "";
+            if (s == "https")
+            {
+                serverUrl = ServerUrlHttPs;
+            }
+            else if (s == "http")
+            {
+                serverUrl = ServerUrlHttp;
+            }
+
             _webSocket = new WebSocket(serverUrl);
             
             _webSocket.OnMessage += HandleMessage;
