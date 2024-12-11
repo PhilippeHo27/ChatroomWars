@@ -2045,6 +2045,7 @@ GameObject:
   - component: {fileID: 133267427136460941}
   - component: {fileID: 8878893287136792533}
   - component: {fileID: 6583403497998607697}
+  - component: {fileID: 8878893287136792534}
   m_Layer: 5
   m_Name: IntroCanvas
   m_TagString: Untagged
@@ -3531,6 +3532,21 @@ MonoBehaviour:
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
   m_PresetInfoIsWorld: 0
+--- !u!114 &8878893287136792534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 29404309692266676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae78aae74e0b30842be44d9ea05c2c47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  connectHttPs: {fileID: 844917187}
+  connectHttp: {fileID: 4804297666876375860}
+  networkHandler: {fileID: 624056876}
 --- !u!224 &8901779190478433832
 RectTransform:
   m_ObjectHideFlags: 0

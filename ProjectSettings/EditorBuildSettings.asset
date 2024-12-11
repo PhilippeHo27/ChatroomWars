@@ -11,16 +11,16 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/WebsocketChatExperiment.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/UnityWebServices.unity
     guid: 713bcdbc3a1bff54caed12efe036fcfb
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Client.unity
     guid: ba563e475e0b5e2489953afaec2f276f
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Server.unity
     guid: 163707b46e3f6e948adc67fe21ebb45a
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Level1.unity
     guid: 0b1d0991c4cbca04ebd6e0eabab6444c
   m_configObjects:

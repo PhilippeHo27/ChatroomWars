@@ -1,9 +1,12 @@
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using UnityEngine;
+
+#if !UNITY_WEBGL
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Lobbies;
-using UnityEngine;
+#endif
 
 public class Client : MonoBehaviour
 {
@@ -11,6 +14,7 @@ public class Client : MonoBehaviour
     {
         try
         {
+            #if !UNITY_WEBGL
             // Initialize Unity Services
             await UnityServices.InitializeAsync();
             
@@ -20,19 +24,22 @@ public class Client : MonoBehaviour
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
                 Debug.Log($"Signed in. Player ID: {AuthenticationService.Instance.PlayerId}");
             }
+            #endif
 
-            // // Connect to server (you'll want to get these values from your lobby/matchmaking service)
-            // var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            //
-            // // Replace with your actual server IP and port
-            // transport.SetConnectionData("YOUR_SERVER_IP", YOUR_SERVER_PORT);
-            
             var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+            
+            #if UNITY_WEBGL
+            // WebGL specific connection settings
+            transport.SetConnectionData("127.0.0.1", (ushort)7777); // Or your WebGL specific host
+            #else
+            // Regular connection settings
             transport.SetConnectionData("0.0.0.0", (ushort)7777); // Default testing port
+            #endif
 
             // Setup connection callbacks
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
             NetworkManager.Singleton.OnConnectionEvent += HandleConnectionEvent;
+
             // Start client
             if (NetworkManager.Singleton.StartClient())
             {

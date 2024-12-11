@@ -10,13 +10,8 @@ namespace Core
     {
         private WebSocket _webSocket;
         [SerializeField] private WebSocketChatHandler chatHandler;
-        private const string ServerUrlHttPs = "wss://18.226.150.199/ws";
+        private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
         private const string ServerUrlHttp = "ws://18.226.150.199:8080";
-
-        //private string serverUrl = "wss://18.226.150.199:443/ws";
-        //private string serverUrl = "wss://18.226.150.199/ws";
-        //private string serverUrl = "wss://18.226.150.199:443";
-        
         private readonly Queue<UnityAction> _actions = new Queue<UnityAction>();
 
         private void Update()
