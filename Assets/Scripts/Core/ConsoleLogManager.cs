@@ -6,24 +6,26 @@ namespace Core
 {
     public class ConsoleLogManager : IndestructibleSingletonBehaviour<ConsoleLogManager>
     {
-        private bool isConsoleEnabled = true;
-        private KeyCode toggleKey = KeyCode.BackQuote;
+        private bool _isConsoleEnabled = true;
+        private KeyCode _toggleKey = KeyCode.BackQuote;
         
-        private readonly Queue<DebugMessage> messageQueue = new Queue<DebugMessage>();
-        private int maxMessages = 5;
-        private float messageDuration = 5f;
+        private readonly Queue<DebugMessage> _messageQueue = new Queue<DebugMessage>();
+        private int _maxMessages = 5;
+        private float _messageDuration = 30f;
 
         // GUI Position control
-        private Rect windowRect = new Rect(10, 10, Screen.width / 3, Screen.height / 3);
-        private Vector2 scrollPosition;
-        private bool isDraggable = true;
-        private GUIStyle windowStyle;
-        private bool isStyleInitialized = false;
+        private Rect _windowRect;
+        private Vector2 _scrollPosition;
+        private bool _isDraggable = true;
+        private GUIStyle _windowStyle;
+        private bool _isStyleInitialized = false;
+        private bool _isCollapsed = false;
 
-        private bool isResizing = false;
-        private Rect resizeHandle = new Rect(0, 0, 15, 15); // Size of resize handle
-        private Vector2 minWindowSize = new Vector2(200, 100); // Minimum window size
-        private float handleSize = 15f;
+        // Constants for window positioning and sizing
+        private const float COLLAPSED_HEIGHT = 30f;
+        private const float COLLAPSED_WIDTH = 150f;
+        private readonly Vector2 COLLAPSED_POSITION = new Vector2(10, Screen.height - 40);
+
         private class DebugMessage
         {
             public string Text;
@@ -39,48 +41,126 @@ namespace Core
         protected override void Awake()
         {
             base.Awake();
-            LoadWindowPosition();
+            InitializeWindowPosition();
         }
+
+        private void InitializeWindowPosition()
+        {
+            float defaultWidth = Screen.width / 3;
+            float defaultHeight = Screen.height / 3;
+            float centerX = (Screen.width - defaultWidth) / 2;
+            float centerY = (Screen.height - defaultHeight) / 2;
+            
+            _windowRect = new Rect(centerX, centerY, defaultWidth, defaultHeight);
+            ToggleCollapse();
+        }
+
         void Update()
         {
-            if (Input.GetKeyDown(toggleKey))
+            if (Input.GetKeyDown(_toggleKey))
             {
                 ToggleConsole();
             }
 
-            // Debug test message
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 Log("Test message at " + Time.time);
             }
         }
+
         private void OnGUI()
+        {
+            if (!_isConsoleEnabled) return;
+
+            if (!_isStyleInitialized)
+            {
+                InitializeGUIStyle();
+            }
+
+            ClampWindowToBounds();
+            _windowRect = GUI.Window(0, _windowRect, DrawConsoleWindow, "Console", _windowStyle);
+        }
+
+        private void ToggleCollapse()
+        {
+            _isCollapsed = !_isCollapsed;
+            
+            if (_isCollapsed)
+            {
+                // Store current position before collapsing
+                _windowRect = new Rect(
+                    COLLAPSED_POSITION.x,
+                    COLLAPSED_POSITION.y,
+                    COLLAPSED_WIDTH,
+                    COLLAPSED_HEIGHT
+                );
+            }
+            else
+            {
+                // Return to center
+                float centerX = (Screen.width - Screen.width / 3) / 2;
+                float centerY = (Screen.height - Screen.height / 3) / 2;
+                _windowRect = new Rect(
+                    centerX,
+                    centerY,
+                    Screen.width / 3,
+                    Screen.height / 3
+                );
+            }
+        }
+
+        private void DrawConsoleWindow(int windowID)
+        {
+            if (GUI.Button(new Rect(_windowRect.width - 25, 5, 20, 20), _isCollapsed ? "+" : "-"))
+            {
+                ToggleCollapse();
+            }
+
+            if (!_isCollapsed)
+            {
+                _scrollPosition = GUILayout.BeginScrollView(_scrollPosition);
+
+                var currentMessages = _messageQueue.ToList();
+                foreach (var message in currentMessages)
                 {
-                    if (!isConsoleEnabled) return;
-        
-                    if (!isStyleInitialized)
+                    if (Time.time - message.TimeStamp > _messageDuration)
                     {
-                        InitializeGUIStyle();
+                        _messageQueue.Dequeue();
+                        continue;
                     }
-        
-                    ClampWindowToBounds();
-                    windowRect = GUI.Window(0, windowRect, DrawConsoleWindow, "Console", windowStyle);
+
+                    GUILayout.Box(message.Text);
                 }
-        
+
+                GUILayout.EndScrollView();
+            }
+
+            if (_isDraggable && !_isCollapsed)
+            {
+                GUI.DragWindow();
+            }
+        }
+
+        private void ClampWindowToBounds()
+        {
+            _windowRect.x = Mathf.Clamp(_windowRect.x, 0, Screen.width - _windowRect.width);
+            _windowRect.y = Mathf.Clamp(_windowRect.y, 0, Screen.height - _windowRect.height);
+        }
+
         // Console functions
         public void ToggleConsole()
         {
-            isConsoleEnabled = !isConsoleEnabled;
+            _isConsoleEnabled = !_isConsoleEnabled;
         }
         
         private void LogMessage(string message)
         {
-            messageQueue.Enqueue(new DebugMessage(message));
-            if (messageQueue.Count > maxMessages)
-                messageQueue.Dequeue();
+            _messageQueue.Enqueue(new DebugMessage(message));
+            if (_messageQueue.Count > _maxMessages)
+                _messageQueue.Dequeue();
         }
         
-        public static void Log(string message)
+        public void Log(string message)
         {
             if (Instance != null)
             {
@@ -88,18 +168,16 @@ namespace Core
             }
         }
         
-        
-        // GUI functions
         private void InitializeGUIStyle()
         {
-            if (isStyleInitialized) return;
+            if (_isStyleInitialized) return;
         
-            windowStyle = new GUIStyle(GUI.skin.window);
-            windowStyle.fontSize = 12;
-            windowStyle.normal.textColor = Color.white;
-            windowStyle.normal.background = MakeTexture(2, 2, new Color(0f, 0f, 0f, 0.8f));
+            _windowStyle = new GUIStyle(GUI.skin.window);
+            _windowStyle.fontSize = 12;
+            _windowStyle.normal.textColor = Color.white;
+            _windowStyle.normal.background = MakeTexture(2, 2, new Color(0f, 0f, 0f, 0.8f));
         
-            isStyleInitialized = true;
+            _isStyleInitialized = true;
         }
         
         private Texture2D MakeTexture(int width, int height, Color color)
@@ -112,125 +190,21 @@ namespace Core
             result.Apply();
             return result;
         }
-        
-        private void ClampWindowToBounds()
-        {
-            windowRect.x = Mathf.Clamp(windowRect.x, 0, Screen.width - windowRect.width);
-            windowRect.y = Mathf.Clamp(windowRect.y, 0, Screen.height - windowRect.height);
-        }
-        
-        private void DrawConsoleWindow(int windowID)
-        {
-            // Handle scrolling
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
-            var currentMessages = messageQueue.ToList();
-            foreach (var message in currentMessages)
-            {
-                if (Time.time - message.TimeStamp > messageDuration)
-                {
-                    messageQueue.Dequeue();
-                    continue;
-                }
-
-                GUILayout.Box(message.Text);
-            }
-
-            GUILayout.EndScrollView();
-
-            // Draw resize handle in bottom right corner
-            resizeHandle.x = windowRect.width - handleSize;
-            resizeHandle.y = windowRect.height - handleSize;
-            GUI.Box(resizeHandle, "↘");
-
-            // Handle resizing
-            HandleResize();
-
-            // Make the window draggable (but not when resizing)
-            if (isDraggable && !isResizing)
-            {
-                GUI.DragWindow();
-                SaveWindowPosition();
-            }
-        }
-        
-        private void HandleResize()
-        {
-            Event e = Event.current;
-    
-            // Only handle mouse events, not repaint events
-            if (e.type != EventType.Repaint)
-            {
-                if (e.type == EventType.MouseDown && resizeHandle.Contains(e.mousePosition))
-                {
-                    isResizing = true;
-                    e.Use(); // Now safe to use
-                }
-                else if (e.type == EventType.MouseUp)
-                {
-                    isResizing = false;
-                    e.Use(); // Now safe to use
-                }
-
-                if (isResizing && e.type == EventType.MouseDrag)
-                {
-                    windowRect.width = Mathf.Max(minWindowSize.x, e.mousePosition.x);
-                    windowRect.height = Mathf.Max(minWindowSize.y, e.mousePosition.y);
-                    e.Use(); // Now safe to use
-                }
-            }
-        }
-        
-        // Window management
-        
-        private void SaveWindowPosition()
-        {
-            PlayerPrefs.SetFloat("ConsoleX", windowRect.x);
-            PlayerPrefs.SetFloat("ConsoleY", windowRect.y);
-            PlayerPrefs.SetFloat("ConsoleWidth", windowRect.width);
-            PlayerPrefs.SetFloat("ConsoleHeight", windowRect.height);
-            PlayerPrefs.Save();
-        }
-        
-        private void LoadWindowPosition()
-        {
-            if (PlayerPrefs.HasKey("ConsoleX"))
-            {
-                windowRect.x = PlayerPrefs.GetFloat("ConsoleX");
-                windowRect.y = PlayerPrefs.GetFloat("ConsoleY");
-                windowRect.width = PlayerPrefs.GetFloat("ConsoleWidth", Screen.width / 3);
-                windowRect.height = PlayerPrefs.GetFloat("ConsoleHeight", Screen.height / 3);
-            }
-        }
-        
-        
         // Configuration methods
         public void SetMaxMessages(int max)
         {
-            maxMessages = max;
+            _maxMessages = max;
         }
 
         public void SetMessageDuration(float duration)
         {
-            messageDuration = duration;
-        }
-
-        public void SetConsolePosition(Vector2 position)
-        {
-            windowRect.x = position.x;
-            windowRect.y = position.y;
-            SaveWindowPosition();
-        }
-
-        public void SetConsoleSize(Vector2 size)
-        {
-            windowRect.width = size.x;
-            windowRect.height = size.y;
+            _messageDuration = duration;
         }
 
         public void SetDraggable(bool draggable)
         {
-            isDraggable = draggable;
+            _isDraggable = draggable;
         }
     }
 }
