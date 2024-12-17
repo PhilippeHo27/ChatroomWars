@@ -52,16 +52,15 @@ namespace Core.WebSocket
             {
                 var chatMessage = new ChatData
                 {
-                    type = "chat",
-                    text = userInputText
+                    Type = PacketType.Chat,
+                    Sequence = wsHandler.GetNextSequenceNumber(),
+                    Text = userInputText
                 };
-        
-                string jsonMessage = JsonUtility.ToJson(chatMessage);
-                wsHandler.SendWebSocketMessage(jsonMessage);
-        
-                // Display the message locally
-                ShowChatText(userInputText);
-        
+                
+                // Show message locally first
+                ShowChatText($"Me: {userInputText}");
+                wsHandler.SendWebSocketPackage(chatMessage);
+
                 chatInput.text = "";
                 chatInput.ActivateInputField();
             }
@@ -71,9 +70,12 @@ namespace Core.WebSocket
         public void ProcessIncomingChatData(string jsonMessage)
         {
             var chatData = JsonUtility.FromJson<ChatData>(jsonMessage);
-            ShowChatText(chatData.text);
+            if (chatData.SenderId != wsHandler.ClientId)
+            {
+                ShowChatText($"Other: {chatData.Text}");
+            }
         }
-
+        
         private void ShowChatText(string chatText)
         {
             TextMeshProUGUI textComponent = GetOrCreateTextComponentObject();
