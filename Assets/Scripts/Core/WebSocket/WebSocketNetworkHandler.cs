@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using NativeWebSocket;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
+using MessagePack;
 
 namespace Core.WebSocket
 {
@@ -23,27 +24,30 @@ namespace Core.WebSocket
         private const string ServerUrlHttp = "ws://18.226.150.199:8080";
         private readonly Queue<Action> _actions = new Queue<Action>();
         
-        private Dictionary<PacketType, Action<string>> _messageHandlers;
+        private Dictionary<PacketType, Action<byte[]>> _messageHandlers;
         private byte _clientId;
         public byte ClientId => _clientId;
         private bool _isConnecting;
         private ushort _currentSequence;
 
-        
+        private readonly MessagePackConfig _messagePackConfig = new MessagePackConfig();
         protected override void Awake()
         {
             base.Awake();
             InitializeMessageHandlers();
+            _messagePackConfig.InitMessagePackResolvers();
         }
         private void InitializeMessageHandlers()
         {
-            _messageHandlers = new Dictionary<PacketType, Action<string>>
+            _messageHandlers = new Dictionary<PacketType, Action<byte[]>>
             {
                 { PacketType.Chat, ProcessChatMessage },
                 { PacketType.Position, ProcessPosition },
-                // Add more handlers here as needed
+                { PacketType.IdAssign, HandleIdAssign },
+                { PacketType.TimeSync, HandleTimeSync }
             };
         }
+
         private void Update()
         {
             #if !UNITY_WEBGL || UNITY_EDITOR
@@ -172,33 +176,72 @@ namespace Core.WebSocket
         
         public void SendWebSocketPackage(BaseWebSocketPackage package)
         {
-            // Ensure the SenderId is set correctly
             package.SenderId = _clientId;
     
-            // Serialize the package
-            string jsonMessage = JsonUtility.ToJson(package);
+            // Debug logging
+            Debug.Log($"Sending package of type: {package.GetType().Name}");
+            Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}, Sequence={package.Sequence}");
+            if (package is ChatData chatData)
+            {
+                Debug.Log($"Chat text: {chatData.Text}");
+            }
+    
+            //var options = MessagePackSerializerOptions.Standard;
+            byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
+    
+            Debug.Log($"Serialized bytes: [{string.Join(", ", bytes)}]");
 
-            SendWebSocketPackageAsync(jsonMessage).ContinueWith(task => 
+            SendWebSocketPackageAsync(bytes).ContinueWith(task => 
             {
                 if (task.IsFaulted)
                 {
                     Debug.LogError($"Failed to send message: {task.Exception}");
-                    ConsoleLogManager.Instance.Log($"Failed to send message: {task.Exception}");
                 }
             });
         }
-
-        private async Task SendWebSocketPackageAsync(string message)
+        
+        private async Task SendWebSocketPackageAsync(byte[] bytes)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
-                await _webSocket.SendText(message);
+                await _webSocket.Send(bytes);
             }
             else
             {
                 throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
             }
         }
+        
+        
+        // public void SendWebSocketPackage(BaseWebSocketPackage package)
+        // {
+        //     // Ensure the SenderId is set correctly
+        //     package.SenderId = _clientId;
+        //
+        //     // Serialize the package
+        //     string jsonMessage = JsonUtility.ToJson(package);
+        //
+        //     SendWebSocketPackageAsync(jsonMessage).ContinueWith(task => 
+        //     {
+        //         if (task.IsFaulted)
+        //         {
+        //             Debug.LogError($"Failed to send message: {task.Exception}");
+        //             ConsoleLogManager.Instance.Log($"Failed to send message: {task.Exception}");
+        //         }
+        //     });
+        // }
+        //
+        // private async Task SendWebSocketPackageAsync(string message)
+        // {
+        //     if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+        //     {
+        //         await _webSocket.SendText(message);
+        //     }
+        //     else
+        //     {
+        //         throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
+        //     }
+        // }
 
         #endregion
 
@@ -215,27 +258,59 @@ namespace Core.WebSocket
         {
             try
             {
-                var message = System.Text.Encoding.UTF8.GetString(data);
-                var baseMessage = JsonUtility.FromJson<BaseWebSocketPackage>(message);
-                if (_messageHandlers.TryGetValue(baseMessage.Type, out var handler))
+                // Decode as array (MessagePack-encoded) 
+                var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+                if (decoded == null || decoded.Length < 2) return;
+
+                // Safely convert index 1 into a PacketType
+                var typeValue = Convert.ToInt32(decoded[1]);
+                var packetType = (PacketType)typeValue;
+
+                Debug.Log($"Received message type: {packetType}, array length: {decoded.Length}");
+
+                if (_messageHandlers.TryGetValue(packetType, out var handler))
                 {
-                    Debug.Log($"Handler found for type {baseMessage.Type}, enqueueing");
-                    EnqueueMainThread(() => handler(message));
+                    Debug.Log($"Handler found for type {packetType}, enqueueing");
+                    EnqueueMainThread(() => handler(data));  // pass byte[] so handler can do detailed deserialization
                 }
                 else
                 {
-                    Debug.Log($"No handler found for message type: {baseMessage.Type}");
+                    Debug.Log($"No handler found for message type: {packetType}");
                 }
             }
             catch (Exception e)
             {
-                Debug.Log($"Error processing message: {e.Message}");
+                Debug.Log($"Error processing MessagePack data: {e.Message}\nStack: {e.StackTrace}");
             }
         }
-        private void ProcessChatMessage(string jsonWebSocketMessage) =>
-            chatHandler?.ProcessIncomingChatData(jsonWebSocketMessage);
-        private void ProcessPosition(string jsonWebSocketMessage) =>
-            movementHandler?.ProcessRemotePositionUpdate(jsonWebSocketMessage);
+
+
+        private void ProcessChatMessage(byte[] messagePackData) =>
+            chatHandler?.ProcessIncomingChatData(messagePackData);
+
+        private void ProcessPosition(byte[] messagePackData) =>
+            movementHandler?.ProcessRemotePositionUpdate(messagePackData);
+        
+        private void HandleIdAssign(byte[] data)
+        {
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded != null && decoded.Length >= 4)
+            {
+                _clientId = (byte)decoded[3];
+                Debug.Log($"Assigned Client ID: {_clientId}");
+            }
+        }
+
+        private void HandleTimeSync(byte[] data)
+        {
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded != null && decoded.Length >= 4)
+            {
+                long serverTime = Convert.ToInt64(decoded[3]);
+                // Use serverTime as needed
+                Debug.Log($"Time Sync Received: {serverTime}");
+            }
+        }
         #endregion
     }
 }

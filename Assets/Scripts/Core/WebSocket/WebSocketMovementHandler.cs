@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using MessagePack; 
 
 namespace Core.WebSocket
 {
@@ -27,41 +28,44 @@ namespace Core.WebSocket
 
         public void SendPositionUpdate(string objectId, Vector3 position)
         {
-            // Only send if position has actually changed
             if (!_lastSentPositions.ContainsKey(objectId) || 
                 Vector3.Distance(_lastSentPositions[objectId], position) > MOVEMENT_THRESHOLD)
             {
-                var positionMessage = new PositionData
+                // // Original position message
+                // var positionMessage = new PositionData
+                // {
+                //     Type = PacketType.Position,
+                //     ObjectId = objectId,
+                //     SenderId = wsHandler.ClientId,
+                //     X = position.x,
+                //     Y = position.y,
+                //     Z = position.z
+                // };
+        
+                var positionMessageVector = new PositionDataVector
                 {
                     Type = PacketType.Position,
                     ObjectId = objectId,
                     SenderId = wsHandler.ClientId,
-                    X = position.x,
-                    Y = position.y,
-                    Z = position.z
+                    Position = position
                 };
-            
+    
                 _lastSentPositions[objectId] = position;
-                wsHandler.SendWebSocketPackage(positionMessage);
+                wsHandler.SendWebSocketPackage(positionMessageVector);
             }
         }
 
-        public void ProcessRemotePositionUpdate(string jsonMessage)
+        public void ProcessRemotePositionUpdate(byte[] messagePackData)
         {
-            var positionData = JsonUtility.FromJson<PositionData>(jsonMessage);
-            if (positionData.SenderId == wsHandler.ClientId) return; // Ignore own updates
-    
+            var positionData = MessagePackSerializer.Deserialize<PositionDataVector>(messagePackData);
+            if (positionData.SenderId == wsHandler.ClientId) return;
+
             if (_trackedObjects.TryGetValue(positionData.ObjectId, out GameObject obj))
             {
                 // Optional: Add interpolation for smoother movement
-                obj.transform.position = new Vector3(
-                    positionData.X,
-                    positionData.Y,
-                    positionData.Z
-                );
+                obj.transform.position = positionData.Position;
             }
         }
-
 
         private void OnDestroy()
         {

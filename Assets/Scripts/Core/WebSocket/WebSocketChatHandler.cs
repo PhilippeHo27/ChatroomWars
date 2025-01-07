@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
+using MessagePack;
 
 namespace Core.WebSocket
 {
@@ -67,9 +68,9 @@ namespace Core.WebSocket
         }
 
 
-        public void ProcessIncomingChatData(string jsonMessage)
+        public void ProcessIncomingChatData(byte[] messagePackData)
         {
-            var chatData = JsonUtility.FromJson<ChatData>(jsonMessage);
+            var chatData = MessagePackSerializer.Deserialize<ChatData>(messagePackData);
             if (chatData.SenderId != wsHandler.ClientId)
             {
                 ShowChatText($"Other: {chatData.Text}");

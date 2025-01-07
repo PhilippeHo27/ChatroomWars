@@ -1,4 +1,5 @@
-using System;
+using MessagePack;
+using UnityEngine;
 
 namespace Core.WebSocket
 {
@@ -6,28 +7,54 @@ namespace Core.WebSocket
     {
         Chat = 0,
         Position = 1,
+        IdAssign = 2,
+        TimeSync = 3
     }
     
-    [Serializable]
+    [MessagePackObject]
     public class BaseWebSocketPackage
     {
-        public byte SenderId;
-        public PacketType Type;
-        public ushort Sequence;
-    }    
+        [Key(0)]
+        public byte SenderId { get; set; }
     
-    [Serializable]
+        [Key(1)]
+        public PacketType Type { get; set; }
+    
+        [Key(2)]
+        public ushort Sequence { get; set; }
+    }    
+
+    [MessagePackObject]
     public class ChatData : BaseWebSocketPackage
     {
-        public string Text;
+        [Key(3)]
+        public string Text { get; set; }
     }
 
-    [Serializable]
-    public class PositionData : BaseWebSocketPackage
+    // [MessagePackObject]
+    // public class PositionData : BaseWebSocketPackage
+    // {
+    //     [Key(3)]
+    //     public string ObjectId { get; set; }
+    //
+    //     [Key(4)]
+    //     public float X { get; set; }
+    //
+    //     [Key(5)]
+    //     public float Y { get; set; }
+    //
+    //     [Key(6)]
+    //     public float Z { get; set; }
+    // }
+    
+    [MessagePackObject]
+    public class PositionDataVector : BaseWebSocketPackage
     {
-        public string ObjectId;
-        public float X;
-        public float Y;
-        public float Z;
+        [Key(3)]
+        public string ObjectId { get; set; }
+    
+        [Key(4)]
+        public Vector3 Position { get; set; }
     }
+    
 }
