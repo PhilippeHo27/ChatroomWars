@@ -5,7 +5,6 @@ using MessagePack.Unity;
 
 namespace Core.WebSocket
 {
-
     public class MessagePackConfig
     {
         public void InitMessagePackResolvers()
@@ -23,8 +22,6 @@ namespace Core.WebSocket
                 .WithResolver(compositeResolver);
 
             MessagePackSerializer.DefaultOptions = options;
-
-            Debug.Log("[MessagePackConfig] Global MessagePack settings initialized.");
         }
     }
 }

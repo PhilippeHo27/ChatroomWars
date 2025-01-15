@@ -34,12 +34,6 @@ namespace Core
             _wsHandler.MovementHandler.RegisterObject(_objectId, gameObject);
         }
 
-        private void OnEnable()
-        {
-            InputManager.Instance.InputActionHandlers["PlayerClick"].Started += OnLeftClickStarted;
-            InputManager.Instance.InputActionHandlers["PlayerClick"].Canceled += OnLeftClickCanceled;
-        }
-
         private void OnDisable()
         {
             InputManager.Instance.InputActionHandlers["PlayerClick"].Started -= OnLeftClickStarted;
@@ -48,22 +42,20 @@ namespace Core
 
         private void OnLeftClickStarted(InputAction.CallbackContext context)
         {
-            Vector3 mousePosition = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            mousePosition.z = transform.position.z; // Keep the same Z position
-
-            if (GetComponent<Collider2D>().OverlapPoint(mousePosition))
+            Vector2 mousePosition = _mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(mousePosition, Vector2.zero);
+    
+            if (hit.collider != null && hit.collider.gameObject == gameObject)
             {
                 _isDragging = true;
-                _offset = transform.position - mousePosition;
+                _offset = transform.position - (Vector3)mousePosition;
                 _lastSentPosition = transform.position;
                 _lastSendTime = Time.time;
             }
         }
-
         private void OnLeftClickCanceled(InputAction.CallbackContext context)
         {
             _isDragging = false;
-            SendPositionUpdate(); // Send final position when dragging ends
         }
 
         private void Update()
@@ -83,8 +75,7 @@ namespace Core
 
         private bool ShouldSendUpdate()
         {
-            return Vector3.Distance(transform.position, _lastSentPosition) > _sendThreshold &&
-                   Time.time - _lastSendTime > _sendInterval;
+            return Vector3.Distance(transform.position, _lastSentPosition) > _sendThreshold && Time.time - _lastSendTime > _sendInterval;
         }
 
         private void SendPositionUpdate()

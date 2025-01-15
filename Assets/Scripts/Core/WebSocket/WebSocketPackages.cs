@@ -8,8 +8,15 @@ namespace Core.WebSocket
         Chat = 0,
         Position = 1,
         IdAssign = 2,
-        TimeSync = 3
+        TimeSync = 3,
+
+        // Room Packet types
+        RoomCreate = 4,
+        RoomJoin = 5,
+        RoomLeave = 6,
+        RoomDestroy = 7
     }
+
     
     [MessagePackObject]
     public class BaseWebSocketPackage
@@ -30,22 +37,6 @@ namespace Core.WebSocket
         [Key(3)]
         public string Text { get; set; }
     }
-
-    // [MessagePackObject]
-    // public class PositionData : BaseWebSocketPackage
-    // {
-    //     [Key(3)]
-    //     public string ObjectId { get; set; }
-    //
-    //     [Key(4)]
-    //     public float X { get; set; }
-    //
-    //     [Key(5)]
-    //     public float Y { get; set; }
-    //
-    //     [Key(6)]
-    //     public float Z { get; set; }
-    // }
     
     [MessagePackObject]
     public class PositionDataVector : BaseWebSocketPackage
@@ -57,4 +48,31 @@ namespace Core.WebSocket
         public Vector3 Position { get; set; }
     }
     
+    [MessagePackObject]
+    public class RoomJoinData : BaseWebSocketPackage
+    {
+        [Key(3)]
+        public string RoomId { get; set; }
+    }
+    
+    [MessagePackObject]
+    public class RoomCreateData : BaseWebSocketPackage
+    {
+        [Key(3)]
+        public string RoomId { get; set; }
+    }
+
+    [MessagePackObject]
+    public class RoomLeaveData : BaseWebSocketPackage
+    {
+        [Key(3)]
+        public string RoomId { get; set; }
+    }
+
+    [MessagePackObject]
+    public class RoomDestroyData : BaseWebSocketPackage
+    {
+        [Key(3)]
+        public string RoomId { get; set; }
+    }
 }

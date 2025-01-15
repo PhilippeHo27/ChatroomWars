@@ -51,7 +51,8 @@ namespace Core.WebSocket
         private void Update()
         {
             #if !UNITY_WEBGL || UNITY_EDITOR
-            _webSocket.DispatchMessageQueue();    
+            if(_webSocket != null)
+                _webSocket.DispatchMessageQueue();    
             #endif
 
             lock(_actions)
@@ -64,7 +65,7 @@ namespace Core.WebSocket
         }
         
         #region Connection Management
-        public void Connect(string s)
+        public void Connect()
         {
             // Check if already connected or in the process of connecting
             if (_webSocket != null && 
@@ -78,7 +79,7 @@ namespace Core.WebSocket
             }
 
             _isConnecting = true;
-            ConnectAsync(s).ContinueWith(task => 
+            ConnectAsync().ContinueWith(task => 
             {
                 _isConnecting = false;
                 if (task.IsFaulted)
@@ -88,7 +89,7 @@ namespace Core.WebSocket
                 }
             });
         }
-        private async Task ConnectAsync(string s)
+        private async Task ConnectAsync()
         {
             try 
             {
@@ -98,14 +99,12 @@ namespace Core.WebSocket
                     _webSocket = null;
                 }
 
-                var serverUrl = s == "https" ? ServerUrlHttPs : ServerUrlHttp;
-                _webSocket = new NativeWebSocket.WebSocket(serverUrl);
+                _webSocket = new NativeWebSocket.WebSocket(ServerUrlHttPs);
 
                 _webSocket.OnMessage += ProcessIncomingMessage;
                 _webSocket.OnOpen += HandleOpen;
                 _webSocket.OnError += HandleError;
                 _webSocket.OnClose += closeCode => Debug.Log($"Connection closed: {closeCode}");
-                _webSocket.OnClose += _ => Disconnect();
                 
                 await _webSocket.Connect();
             }
@@ -117,14 +116,7 @@ namespace Core.WebSocket
                 throw;
             }
         }
-        
-        public async Task Disconnect()
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                await _webSocket.Close();
-            }
-        }
+
         private void HandleOpen()
         {
             Debug.Log("Connected");
@@ -177,19 +169,8 @@ namespace Core.WebSocket
         public void SendWebSocketPackage(BaseWebSocketPackage package)
         {
             package.SenderId = _clientId;
-    
-            // Debug logging
-            Debug.Log($"Sending package of type: {package.GetType().Name}");
-            Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}, Sequence={package.Sequence}");
-            if (package is ChatData chatData)
-            {
-                Debug.Log($"Chat text: {chatData.Text}");
-            }
-    
-            //var options = MessagePackSerializerOptions.Standard;
             byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
-    
-            Debug.Log($"Serialized bytes: [{string.Join(", ", bytes)}]");
+            LogPackageDebugInfo(package);
 
             SendWebSocketPackageAsync(bytes).ContinueWith(task => 
             {
@@ -199,6 +180,21 @@ namespace Core.WebSocket
                 }
             });
         }
+
+        private void LogPackageDebugInfo(BaseWebSocketPackage package)
+        {
+            Debug.Log($"Sending package of type: {package.GetType().Name}");
+            Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}, Sequence={package.Sequence}");
+    
+            if (package is ChatData chatData)
+            {
+                Debug.Log($"Chat text: {chatData.Text}");
+            }
+    
+            byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
+            Debug.Log($"Serialized bytes: [{string.Join(", ", bytes)}]");
+        }
+
         
         private async Task SendWebSocketPackageAsync(byte[] bytes)
         {
@@ -211,37 +207,6 @@ namespace Core.WebSocket
                 throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
             }
         }
-        
-        
-        // public void SendWebSocketPackage(BaseWebSocketPackage package)
-        // {
-        //     // Ensure the SenderId is set correctly
-        //     package.SenderId = _clientId;
-        //
-        //     // Serialize the package
-        //     string jsonMessage = JsonUtility.ToJson(package);
-        //
-        //     SendWebSocketPackageAsync(jsonMessage).ContinueWith(task => 
-        //     {
-        //         if (task.IsFaulted)
-        //         {
-        //             Debug.LogError($"Failed to send message: {task.Exception}");
-        //             ConsoleLogManager.Instance.Log($"Failed to send message: {task.Exception}");
-        //         }
-        //     });
-        // }
-        //
-        // private async Task SendWebSocketPackageAsync(string message)
-        // {
-        //     if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-        //     {
-        //         await _webSocket.SendText(message);
-        //     }
-        //     else
-        //     {
-        //         throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
-        //     }
-        // }
 
         #endregion
 
@@ -314,5 +279,3 @@ namespace Core.WebSocket
         #endregion
     }
 }
-
-// ConsoleLogManager.Instance.Log($"Error processing message: {e.Message}");

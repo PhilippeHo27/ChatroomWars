@@ -28,20 +28,8 @@ namespace Core.WebSocket
 
         public void SendPositionUpdate(string objectId, Vector3 position)
         {
-            if (!_lastSentPositions.ContainsKey(objectId) || 
-                Vector3.Distance(_lastSentPositions[objectId], position) > MOVEMENT_THRESHOLD)
+            if (!_lastSentPositions.ContainsKey(objectId) || Vector3.Distance(_lastSentPositions[objectId], position) > MOVEMENT_THRESHOLD)
             {
-                // // Original position message
-                // var positionMessage = new PositionData
-                // {
-                //     Type = PacketType.Position,
-                //     ObjectId = objectId,
-                //     SenderId = wsHandler.ClientId,
-                //     X = position.x,
-                //     Y = position.y,
-                //     Z = position.z
-                // };
-        
                 var positionMessageVector = new PositionDataVector
                 {
                     Type = PacketType.Position,
