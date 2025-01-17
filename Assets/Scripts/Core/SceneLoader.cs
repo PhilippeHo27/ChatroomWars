@@ -8,12 +8,12 @@ namespace Core
     public class SceneLoader : MonoBehaviour
     {
         [SerializeField] private Button websocketChatButton;
-        //[SerializeField] private Button webServicesButton;
+        [SerializeField] private Button offlineScene;
     
         private void Start()
         {
             websocketChatButton.onClick.AddListener(() => StartCoroutine(LoadSceneAsync("WebsocketChatExperiment")));
-            //webServicesButton.onClick.AddListener(() => StartCoroutine(LoadSceneAsync("UnityWebServices")));
+            offlineScene.onClick.AddListener(() => StartCoroutine(LoadSceneAsync("OfflinePrototype")));
         }
 
         private IEnumerator LoadSceneAsync(string sceneName)
@@ -31,7 +31,7 @@ namespace Core
         private void OnDestroy()
         {
             websocketChatButton.onClick.RemoveAllListeners();
-            //webServicesButton.onClick.RemoveAllListeners();
+            offlineScene.onClick.RemoveAllListeners();
         }
     }
 }

@@ -1301,8 +1301,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1718047314}
-  - {fileID: 792391195}
   - {fileID: 1002536516}
+  - {fileID: 792391195}
   - {fileID: 854298712}
   - {fileID: 1300421022}
   - {fileID: 1132363219}
@@ -1526,8 +1526,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Online \n"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b547ccf7b452f934a977c3686b685c4f, type: 2}
+  m_sharedMaterial: {fileID: 379599696839560207, guid: b547ccf7b452f934a977c3686b685c4f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1737,8 +1737,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Offline
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b547ccf7b452f934a977c3686b685c4f, type: 2}
+  m_sharedMaterial: {fileID: 379599696839560207, guid: b547ccf7b452f934a977c3686b685c4f, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

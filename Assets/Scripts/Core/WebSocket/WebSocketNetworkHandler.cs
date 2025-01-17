@@ -162,7 +162,6 @@ namespace Core.WebSocket
 
         public ushort GetNextSequenceNumber()
         {
-            // Will automatically wrap around to 0 when it exceeds ushort.MaxValue (65535)
             return _currentSequence++;
         }
         
@@ -170,7 +169,8 @@ namespace Core.WebSocket
         {
             package.SenderId = _clientId;
             byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
-            LogPackageDebugInfo(package);
+            
+            //LogPackageDebugInfo(package);
 
             SendWebSocketPackageAsync(bytes).ContinueWith(task => 
             {
@@ -236,7 +236,7 @@ namespace Core.WebSocket
                 if (_messageHandlers.TryGetValue(packetType, out var handler))
                 {
                     Debug.Log($"Handler found for type {packetType}, enqueueing");
-                    EnqueueMainThread(() => handler(data));  // pass byte[] so handler can do detailed deserialization
+                    EnqueueMainThread(() => handler(data));
                 }
                 else
                 {
