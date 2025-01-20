@@ -1016,6 +1016,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1336848395622175746, guid: 0c80af5a336c44848850e069e31c6abc, type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 906367517}
     - target: {fileID: 6115746999181047301, guid: 0c80af5a336c44848850e069e31c6abc, type: 3}
       propertyPath: m_Name
       value: KeyboardCanvas
@@ -1251,7 +1255,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -772.53, y: -40}
+  m_AnchoredPosition: {x: -1220, y: 67}
   m_SizeDelta: {x: 4, y: 40}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &2145157338

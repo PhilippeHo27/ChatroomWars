@@ -44,7 +44,7 @@ namespace Core
             InitializeCursorBlink();
             
             // Delay the initial cursor positioning to ensure text has been rendered
-            Invoke(nameof(InitialCursorPositioning), 0.1f);
+            Invoke(nameof(InitialCursorPositioning), 0.5f);
         }
         
         private void InitialCursorPositioning()
