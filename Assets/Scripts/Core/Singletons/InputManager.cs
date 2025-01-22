@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Core
+namespace Core.Singletons
 {
     public class InputManager : IndestructibleSingletonBehaviour<InputManager>
     {

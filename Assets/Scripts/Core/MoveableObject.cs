@@ -1,4 +1,5 @@
 using System;
+using Core.Singletons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 

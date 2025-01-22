@@ -4,7 +4,7 @@ using MessagePack;
 
 namespace Core.WebSocket
 {
-    public class WebSocketMovementHandler : MonoBehaviour
+    public class MovementHandler : MonoBehaviour
     {
         [SerializeField] private WebSocketNetworkHandler wsHandler;
         private Dictionary<string, GameObject> _trackedObjects = new Dictionary<string, GameObject>();

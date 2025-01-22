@@ -5,20 +5,19 @@ using UnityEngine.UI;
 
 namespace Core
 {
-    public class ChatboxHandler : MonoBehaviour
+    public class ChatroomUI : MonoBehaviour
     {
+        [SerializeField] private Button connectButton;
+        [SerializeField] private Button createRoomButton;
         [SerializeField] private Button joinRoomButton;
-        [SerializeField] private string roomId = "TestRoom"; // The room to join
+        [SerializeField] private string roomId = "TestRoom";
 
         private void Start()
         {
-            // Attach the click handler if you have a button assigned
-            if (joinRoomButton != null)
-            {
-                joinRoomButton.onClick.AddListener(OnJoinRoomClicked);
-            }
+            joinRoomButton.onClick.AddListener(OnJoinRoomClicked);
+            connectButton.onClick.AddListener(() => WebSocketNetworkHandler.Instance.Connect());
+            createRoomButton.onClick.AddListener(CreateRoom);
         }
-        
         
         private void CreateRoom()
         {
@@ -30,28 +29,21 @@ namespace Core
                 RoomId = roomId
             };
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(createData);
+            
+            Debug.Log($"Attempting to create room: {roomId}");
         }
 
 
         private void OnJoinRoomClicked()
         {
-            // Create our "join room" data
             var joinData = new RoomJoinData
             {
-                // The network handler’s client ID
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
-
-                // Indicate it's a room join request
                 Type = PacketType.RoomJoin,
-
-                // Grab a sequence number from the network handler
                 Sequence = WebSocketNetworkHandler.Instance.GetNextSequenceNumber(),
-
-                // The actual room ID
                 RoomId = roomId
             };
 
-            // Send the packet
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(joinData);
 
             Debug.Log($"Attempting to join room: {roomId}");

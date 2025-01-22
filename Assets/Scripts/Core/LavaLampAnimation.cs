@@ -45,7 +45,6 @@ namespace Core
             float saturation = Random.Range(minSaturation, maxSaturation);
             float value = Random.Range(minBrightness, maxBrightness);
             Color baseColor = Color.HSVToRGB(hue, saturation, value);
-            //float brightness = Random.Range(minBrightness, maxBrightness);
             return baseColor;
         }
 

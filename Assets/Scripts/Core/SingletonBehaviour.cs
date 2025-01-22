@@ -95,8 +95,8 @@ namespace Core
 		
 			if(destroy)
 			{
-				Debug.LogWarning(message);
 #if UNITY_EDITOR
+				Debug.LogWarning(message);
 				DestroyImmediate(gameObject);
 #else
 			Destroy(gameObject);

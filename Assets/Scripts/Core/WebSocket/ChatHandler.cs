@@ -8,7 +8,7 @@ using MessagePack;
 
 namespace Core.WebSocket
 {
-    public class WebSocketChatHandler : MonoBehaviour
+    public class ChatHandler : MonoBehaviour
     {
         [SerializeField] private WebSocketNetworkHandler wsHandler;
         [SerializeField] private TMP_InputField chatInput;

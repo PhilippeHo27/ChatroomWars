@@ -1,3 +1,4 @@
+using Core.Singletons;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Core.WebSocket;
@@ -10,7 +11,7 @@ namespace Core
         private Vector3 _offset;
         private Camera _mainCamera;
         private WebSocketNetworkHandler _wsHandler;
-        private WebSocketMovementHandler _movementHandler;
+        private MovementHandler _movementHandler;
 
         private string _objectId;
         private Vector3 _lastSentPosition;
@@ -30,14 +31,8 @@ namespace Core
             InputManager.Instance.InputActionHandlers["PlayerClick"].Canceled += OnLeftClickCanceled;
             InputManager.Instance.GameControls.UI.Enable();
 
-            // Register this object with the WebSocketMovementHandler
+            // Register this object with the MovementHandler
             _wsHandler.MovementHandler.RegisterObject(_objectId, gameObject);
-        }
-
-        private void OnDisable()
-        {
-            InputManager.Instance.InputActionHandlers["PlayerClick"].Started -= OnLeftClickStarted;
-            InputManager.Instance.InputActionHandlers["PlayerClick"].Canceled -= OnLeftClickCanceled;
         }
 
         private void OnLeftClickStarted(InputAction.CallbackContext context)

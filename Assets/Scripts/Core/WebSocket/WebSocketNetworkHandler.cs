@@ -14,11 +14,11 @@ namespace Core.WebSocket
     public class WebSocketNetworkHandler : IndestructibleSingletonBehaviour<WebSocketNetworkHandler>
     {
         private NativeWebSocket.WebSocket _webSocket;
-        [SerializeField] private WebSocketChatHandler chatHandler;
-        public WebSocketChatHandler ChatHandler => chatHandler;
+        [SerializeField] private ChatHandler chatHandler;
+        public ChatHandler ChatHandler => chatHandler;
 
-        [SerializeField] private WebSocketMovementHandler movementHandler;
-        public WebSocketMovementHandler MovementHandler => movementHandler;
+        [SerializeField] private MovementHandler movementHandler;
+        public MovementHandler MovementHandler => movementHandler;
         
         private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
         private const string ServerUrlHttp = "ws://18.226.150.199:8080";
@@ -74,7 +74,6 @@ namespace Core.WebSocket
                  _isConnecting))
             {
                 Debug.Log("Already connected or connecting. Ignoring connection request.");
-                ConsoleLogManager.Instance.Log("Already connected or connecting. Ignoring connection request.");
                 return;
             }
 
@@ -85,7 +84,6 @@ namespace Core.WebSocket
                 if (task.IsFaulted)
                 {
                     Debug.LogError($"Connection failed: {task.Exception}");
-                    ConsoleLogManager.Instance.Log($"Connection failed: {task.Exception}");
                 }
             });
         }
@@ -104,7 +102,6 @@ namespace Core.WebSocket
                 _webSocket.OnMessage += ProcessIncomingMessage;
                 _webSocket.OnOpen += HandleOpen;
                 _webSocket.OnError += HandleError;
-                _webSocket.OnClose += closeCode => Debug.Log($"Connection closed: {closeCode}");
                 
                 await _webSocket.Connect();
             }
@@ -112,7 +109,6 @@ namespace Core.WebSocket
             {
                 _isConnecting = false;
                 Debug.LogError($"Connection error: {e.Message}");
-                ConsoleLogManager.Instance.Log($"Connection error: {e.Message}");
                 throw;
             }
         }
@@ -120,12 +116,10 @@ namespace Core.WebSocket
         private void HandleOpen()
         {
             Debug.Log("Connected");
-            ConsoleLogManager.Instance.Log("WebSocket Connected");
         }
         private void HandleError(string error)
         {
             Debug.LogError($"WebSocket Error: {error}");
-            ConsoleLogManager.Instance.Log($"WebSocket Error: {error}");
         }
         private void OnApplicationQuit()
         {
@@ -231,11 +225,11 @@ namespace Core.WebSocket
                 var typeValue = Convert.ToInt32(decoded[1]);
                 var packetType = (PacketType)typeValue;
 
-                Debug.Log($"Received message type: {packetType}, array length: {decoded.Length}");
+                //Debug.Log($"Received message type: {packetType}, array length: {decoded.Length}");
 
                 if (_messageHandlers.TryGetValue(packetType, out var handler))
                 {
-                    Debug.Log($"Handler found for type {packetType}, enqueueing");
+                    //Debug.Log($"Handler found for type {packetType}, enqueueing");
                     EnqueueMainThread(() => handler(data));
                 }
                 else
@@ -273,7 +267,7 @@ namespace Core.WebSocket
             {
                 long serverTime = Convert.ToInt64(decoded[3]);
                 // Use serverTime as needed
-                Debug.Log($"Time Sync Received: {serverTime}");
+                //Debug.Log($"Time Sync Received: {serverTime}");
             }
         }
         #endregion

@@ -31,10 +31,10 @@ Material:
     m_Floats:
     - _Blurriness: 0.093
     - _DistortionStrength: 0
-    - _NoiseIntensity: 1
-    - _Scale: 40
-    - _Smoothness: 0.587
-    - _Speed: 0.24
+    - _NoiseIntensity: 1.271
+    - _Scale: 20
+    - _Smoothness: 0.535
+    - _Speed: 0.25
     m_Colors:
     - _Color1: {r: 0.5866172, g: 0.5803222, b: 0.764151, a: 1}
     - _Color2: {r: 0, g: 0.007843138, b: 0.003921569, a: 1}
