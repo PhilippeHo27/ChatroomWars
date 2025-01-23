@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace Core
 {
-    public class MoveableObject : MonoBehaviour
+    public class Paddles : MonoBehaviour
     {
         private Vector2 _movement;
         private float _moveSpeed = 5f;

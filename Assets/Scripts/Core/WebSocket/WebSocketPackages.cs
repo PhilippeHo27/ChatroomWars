@@ -14,7 +14,10 @@ namespace Core.WebSocket
         RoomCreate = 4,
         RoomJoin = 5,
         RoomLeave = 6,
-        RoomDestroy = 7
+        RoomDestroy = 7,
+        
+        // Server messages
+        ServerResponse = 8
     }
 
     
@@ -26,53 +29,29 @@ namespace Core.WebSocket
     
         [Key(1)]
         public PacketType Type { get; set; }
-    
-        [Key(2)]
-        public ushort Sequence { get; set; }
     }    
 
     [MessagePackObject]
     public class ChatData : BaseWebSocketPackage
     {
-        [Key(3)]
+        [Key(2)]
         public string Text { get; set; }
     }
     
     [MessagePackObject]
     public class PositionDataVector : BaseWebSocketPackage
     {
-        [Key(3)]
+        [Key(2)]
         public string ObjectId { get; set; }
     
-        [Key(4)]
+        [Key(3)]
         public Vector3 Position { get; set; }
     }
     
     [MessagePackObject]
-    public class RoomJoinData : BaseWebSocketPackage
+    public class RoomAction : BaseWebSocketPackage
     {
-        [Key(3)]
-        public string RoomId { get; set; }
-    }
-    
-    [MessagePackObject]
-    public class RoomCreateData : BaseWebSocketPackage
-    {
-        [Key(3)]
-        public string RoomId { get; set; }
-    }
-
-    [MessagePackObject]
-    public class RoomLeaveData : BaseWebSocketPackage
-    {
-        [Key(3)]
-        public string RoomId { get; set; }
-    }
-
-    [MessagePackObject]
-    public class RoomDestroyData : BaseWebSocketPackage
-    {
-        [Key(3)]
+        [Key(2)]
         public string RoomId { get; set; }
     }
 }

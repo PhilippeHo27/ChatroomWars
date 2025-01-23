@@ -14,23 +14,26 @@ namespace Core.WebSocket
     public class WebSocketNetworkHandler : IndestructibleSingletonBehaviour<WebSocketNetworkHandler>
     {
         private NativeWebSocket.WebSocket _webSocket;
-        [SerializeField] private ChatHandler chatHandler;
-        public ChatHandler ChatHandler => chatHandler;
+        private ChatHandler _chatHandler;
+        public ChatHandler ChatHandler { get => _chatHandler; set => _chatHandler = value; }
 
-        [SerializeField] private MovementHandler movementHandler;
-        public MovementHandler MovementHandler => movementHandler;
+        private MovementHandler _movementHandler;
+        public MovementHandler MovementHandler { get => _movementHandler; set => _movementHandler = value; }
         
         private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
         private const string ServerUrlHttp = "ws://18.226.150.199:8080";
+        private const string ServerUrlLocal = "ws://localhost:8080";
+
         private readonly Queue<Action> _actions = new Queue<Action>();
         
         private Dictionary<PacketType, Action<byte[]>> _messageHandlers;
         private byte _clientId;
         public byte ClientId => _clientId;
         private bool _isConnecting;
-        private ushort _currentSequence;
-
+        public event Action<bool> OnServerResponse;
+        
         private readonly MessagePackConfig _messagePackConfig = new MessagePackConfig();
+        
         protected override void Awake()
         {
             base.Awake();
@@ -44,7 +47,8 @@ namespace Core.WebSocket
                 { PacketType.Chat, ProcessChatMessage },
                 { PacketType.Position, ProcessPosition },
                 { PacketType.IdAssign, HandleIdAssign },
-                { PacketType.TimeSync, HandleTimeSync }
+                { PacketType.TimeSync, HandleTimeSync },
+                { PacketType.ServerResponse, HandleServerResponse }
             };
         }
 
@@ -97,7 +101,8 @@ namespace Core.WebSocket
                     _webSocket = null;
                 }
 
-                _webSocket = new NativeWebSocket.WebSocket(ServerUrlHttPs);
+                //_webSocket = new NativeWebSocket.WebSocket(ServerUrlHttPs);
+                _webSocket = new NativeWebSocket.WebSocket(ServerUrlLocal);
 
                 _webSocket.OnMessage += ProcessIncomingMessage;
                 _webSocket.OnOpen += HandleOpen;
@@ -153,11 +158,6 @@ namespace Core.WebSocket
         #endregion
         
         #region Sending
-
-        public ushort GetNextSequenceNumber()
-        {
-            return _currentSequence++;
-        }
         
         public void SendWebSocketPackage(BaseWebSocketPackage package)
         {
@@ -178,7 +178,7 @@ namespace Core.WebSocket
         private void LogPackageDebugInfo(BaseWebSocketPackage package)
         {
             Debug.Log($"Sending package of type: {package.GetType().Name}");
-            Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}, Sequence={package.Sequence}");
+            Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}");
     
             if (package is ChatData chatData)
             {
@@ -245,17 +245,17 @@ namespace Core.WebSocket
 
 
         private void ProcessChatMessage(byte[] messagePackData) =>
-            chatHandler?.ProcessIncomingChatData(messagePackData);
+            _chatHandler?.ProcessIncomingChatData(messagePackData);
 
         private void ProcessPosition(byte[] messagePackData) =>
-            movementHandler?.ProcessRemotePositionUpdate(messagePackData);
+            _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
         
         private void HandleIdAssign(byte[] data)
         {
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
-            if (decoded != null && decoded.Length >= 4)
+            if (decoded != null && decoded.Length >= 3)
             {
-                _clientId = (byte)decoded[3];
+                _clientId = (byte)decoded[2];
                 Debug.Log($"Assigned Client ID: {_clientId}");
             }
         }
@@ -263,13 +263,30 @@ namespace Core.WebSocket
         private void HandleTimeSync(byte[] data)
         {
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
-            if (decoded != null && decoded.Length >= 4)
+            if (decoded != null && decoded.Length >= 3)
             {
-                long serverTime = Convert.ToInt64(decoded[3]);
+                long serverTime = Convert.ToInt64(decoded[2]);
                 // Use serverTime as needed
                 //Debug.Log($"Time Sync Received: {serverTime}");
             }
         }
+
+        private void HandleServerResponse(byte[] data)
+        {
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded != null && decoded.Length >= 3)
+            {
+                Debug.Log($"Decoded array contents: [{string.Join(", ", decoded)}]");
+                Debug.Log($"Type of decoded[2]: {decoded[2]?.GetType().Name}");
+        
+                bool serverResponse = Convert.ToBoolean(decoded[2]);
+                Debug.Log($"Server Response: {serverResponse}");
+        
+                OnServerResponse?.Invoke(serverResponse);
+            }
+        }
+
+
         #endregion
     }
 }

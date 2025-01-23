@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using MessagePack; 
@@ -6,10 +7,17 @@ namespace Core.WebSocket
 {
     public class MovementHandler : MonoBehaviour
     {
-        [SerializeField] private WebSocketNetworkHandler wsHandler;
+        private WebSocketNetworkHandler _wsHandler;
         private Dictionary<string, GameObject> _trackedObjects = new Dictionary<string, GameObject>();
         private Dictionary<string, Vector3> _lastSentPositions = new Dictionary<string, Vector3>();
         private const float MOVEMENT_THRESHOLD = 0.001f; // Adjust this value as needed
+
+        private void Awake()
+        {
+            _wsHandler = WebSocketNetworkHandler.Instance;
+            WebSocketNetworkHandler.Instance.MovementHandler = this;
+        }
+
         public void RegisterObject(string objectId, GameObject obj)
         {
             if (!_trackedObjects.ContainsKey(objectId))
@@ -34,19 +42,19 @@ namespace Core.WebSocket
                 {
                     Type = PacketType.Position,
                     ObjectId = objectId,
-                    SenderId = wsHandler.ClientId,
+                    SenderId = _wsHandler.ClientId,
                     Position = position
                 };
     
                 _lastSentPositions[objectId] = position;
-                wsHandler.SendWebSocketPackage(positionMessageVector);
+                _wsHandler.SendWebSocketPackage(positionMessageVector);
             }
         }
 
         public void ProcessRemotePositionUpdate(byte[] messagePackData)
         {
             var positionData = MessagePackSerializer.Deserialize<PositionDataVector>(messagePackData);
-            if (positionData.SenderId == wsHandler.ClientId) return;
+            if (positionData.SenderId == _wsHandler.ClientId) return;
 
             if (_trackedObjects.TryGetValue(positionData.ObjectId, out GameObject obj))
             {

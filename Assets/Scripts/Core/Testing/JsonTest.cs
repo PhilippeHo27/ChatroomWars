@@ -9,7 +9,6 @@ public class JsonTest : MonoBehaviour
         var chatMessage = new ChatData
         {
             Type = PacketType.Chat,
-            Sequence = 1,
             Text = "Test Message",
             SenderId = 123
         };

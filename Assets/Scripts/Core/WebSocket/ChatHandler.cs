@@ -10,7 +10,7 @@ namespace Core.WebSocket
 {
     public class ChatHandler : MonoBehaviour
     {
-        [SerializeField] private WebSocketNetworkHandler wsHandler;
+        private WebSocketNetworkHandler _wsHandler;
         [SerializeField] private TMP_InputField chatInput;
         [SerializeField] private ScrollRect scrollRect;
         [SerializeField] private RectTransform contentPanel;
@@ -19,6 +19,12 @@ namespace Core.WebSocket
 
         private Queue<TextMeshProUGUI> _textComponentPool;
         private List<TextMeshProUGUI> _activeTextComponents;
+
+        private void Awake()
+        {
+            _wsHandler = WebSocketNetworkHandler.Instance;
+            WebSocketNetworkHandler.Instance.ChatHandler = this;
+        }
 
         private void Start()
         {
@@ -54,13 +60,12 @@ namespace Core.WebSocket
                 var chatMessage = new ChatData
                 {
                     Type = PacketType.Chat,
-                    Sequence = wsHandler.GetNextSequenceNumber(),
                     Text = userInputText
                 };
                 
                 // Show message locally first
                 ShowChatText($"Me: {userInputText}");
-                wsHandler.SendWebSocketPackage(chatMessage);
+                _wsHandler.SendWebSocketPackage(chatMessage);
 
                 chatInput.text = "";
                 chatInput.ActivateInputField();
@@ -71,7 +76,7 @@ namespace Core.WebSocket
         public void ProcessIncomingChatData(byte[] messagePackData)
         {
             var chatData = MessagePackSerializer.Deserialize<ChatData>(messagePackData);
-            if (chatData.SenderId != wsHandler.ClientId)
+            if (chatData.SenderId != _wsHandler.ClientId)
             {
                 ShowChatText($"Other: {chatData.Text}");
             }
