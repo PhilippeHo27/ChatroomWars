@@ -24,12 +24,14 @@ namespace Core
         private void Start()
         {
             //connectButton.onClick.AddListener(() => WebSocketNetworkHandler.Instance.Connect());
-            WebSocketNetworkHandler.Instance.Connect();
+            //WebSocketNetworkHandler.Instance.Connect();
             
             createRoomButton.onClick.AddListener(CreateRoom);
             joinRoomButton.onClick.AddListener(JoinRoom);
             backButton.onClick.AddListener(LeaveRoom);
             WebSocketNetworkHandler.Instance.OnServerResponse += HandleServerResponse;
+            
+            roomName.onSubmit.AddListener(_ => CreateRoom());
         }
         
         private void CreateRoom()

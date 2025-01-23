@@ -64,21 +64,22 @@ namespace Core.WebSocket
                 };
                 
                 // Show message locally first
-                ShowChatText($"Me: {userInputText}");
+                ShowChatText($"{PlayerPrefs.GetString("Username", "Me")}: {userInputText}");
+                //ShowChatText($"Me: {userInputText}");
                 _wsHandler.SendWebSocketPackage(chatMessage);
 
                 chatInput.text = "";
                 chatInput.ActivateInputField();
             }
         }
-
-
+        
         public void ProcessIncomingChatData(byte[] messagePackData)
         {
             var chatData = MessagePackSerializer.Deserialize<ChatData>(messagePackData);
             if (chatData.SenderId != _wsHandler.ClientId)
             {
-                ShowChatText($"Other: {chatData.Text}");
+                string userName = GetUserNameById(chatData.SenderId);
+                ShowChatText($"{userName}: {chatData.Text}");
             }
         }
         
@@ -117,6 +118,16 @@ namespace Core.WebSocket
         {
             Canvas.ForceUpdateCanvases();
             scrollRect.normalizedPosition = new Vector2(0, 0);
+        }
+        
+        private string GetUserNameById(byte userId)
+        {
+            var users = WebSocketNetworkHandler.Instance.Users;
+            if (users.TryGetValue(userId, out string userName))
+            {
+                return userName;
+            }
+            return $"User_{userId}";  // Fallback if name not found
         }
     }
 }

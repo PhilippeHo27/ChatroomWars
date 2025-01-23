@@ -17,7 +17,10 @@ namespace Core.WebSocket
         RoomDestroy = 7,
         
         // Server messages
-        ServerResponse = 8
+        ServerResponse = 8,
+        
+        // Mainly to retrieve names of other users in chat room
+        UserInfo = 9
     }
 
     
@@ -25,7 +28,7 @@ namespace Core.WebSocket
     public class BaseWebSocketPackage
     {
         [Key(0)]
-        public byte SenderId { get; set; }
+        public byte SenderId { get; set; }  
     
         [Key(1)]
         public PacketType Type { get; set; }
@@ -54,4 +57,22 @@ namespace Core.WebSocket
         [Key(2)]
         public string RoomId { get; set; }
     }
+    
+    [MessagePackObject]
+    public class UserListUpdate : BaseWebSocketPackage
+    {
+        [Key(2)]
+        public UserEntry[] Users { get; set; }
+    }
+
+    [MessagePackObject]
+    public struct UserEntry
+    {
+        [Key(0)]
+        public byte UserId { get; set; }
+
+        [Key(1)]
+        public string UserName { get; set; }
+    }
+
 }

@@ -29,6 +29,10 @@ namespace Core.WebSocket
         private Dictionary<PacketType, Action<byte[]>> _messageHandlers;
         private byte _clientId;
         public byte ClientId => _clientId;
+        private readonly Dictionary<byte, string> _users = new Dictionary<byte, string>();
+        public IReadOnlyDictionary<byte, string> Users => _users;
+
+        
         private bool _isConnecting;
         public event Action<bool> OnServerResponse;
         
@@ -48,7 +52,9 @@ namespace Core.WebSocket
                 { PacketType.Position, ProcessPosition },
                 { PacketType.IdAssign, HandleIdAssign },
                 { PacketType.TimeSync, HandleTimeSync },
-                { PacketType.ServerResponse, HandleServerResponse }
+                { PacketType.ServerResponse, HandleServerResponse },
+                { PacketType.UserInfo, HandleUserInfo }
+
             };
         }
 
@@ -285,8 +291,25 @@ namespace Core.WebSocket
                 OnServerResponse?.Invoke(serverResponse);
             }
         }
+        
+        private void HandleUserInfo(byte[] data)
+        {
+            Debug.Log("allo jsuis ici");
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded != null && decoded.Length >= 3)
+            {
+                var userList = MessagePackSerializer.Deserialize<UserEntry[]>(MessagePackSerializer.Serialize(decoded[2]));
 
-
+                if (userList != null)
+                {
+                    foreach (var user in userList)
+                    {
+                        _users[user.UserId] = user.UserName;
+                    }
+                }
+            }
+        }
+        
         #endregion
     }
 }
