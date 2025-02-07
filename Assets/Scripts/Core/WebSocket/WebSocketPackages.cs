@@ -10,19 +10,15 @@ namespace Core.WebSocket
         IdAssign = 2,
         TimeSync = 3,
 
-        // Room Packet types
         RoomCreate = 4,
         RoomJoin = 5,
         RoomLeave = 6,
         RoomDestroy = 7,
         
-        // Server messages
         ServerResponse = 8,
         
-        // Mainly to retrieve names of other users in chat room
         UserInfo = 9
     }
-
     
     [MessagePackObject]
     public class BaseWebSocketPackage
@@ -33,14 +29,14 @@ namespace Core.WebSocket
         [Key(1)]
         public PacketType Type { get; set; }
     }    
-
+    
     [MessagePackObject]
     public class ChatData : BaseWebSocketPackage
     {
         [Key(2)]
         public string Text { get; set; }
     }
-    
+
     [MessagePackObject]
     public class PositionDataVector : BaseWebSocketPackage
     {
@@ -64,7 +60,7 @@ namespace Core.WebSocket
         [Key(2)]
         public UserEntry[] Users { get; set; }
     }
-
+    
     [MessagePackObject]
     public struct UserEntry
     {
@@ -74,5 +70,4 @@ namespace Core.WebSocket
         [Key(1)]
         public string UserName { get; set; }
     }
-
 }

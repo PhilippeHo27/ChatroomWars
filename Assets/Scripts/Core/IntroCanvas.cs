@@ -1,12 +1,11 @@
 using System.Collections;
-using System.Collections.Generic;
 using Core.Singletons;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Core.WebSocket;
 using DG.Tweening;
+using System.Collections.Generic;
 
 namespace Core
 {
@@ -18,15 +17,14 @@ namespace Core
         [SerializeField] private Button pongGameButton;
         [SerializeField] private Button offlineScene;
         [SerializeField] private Button backButton;
-    
+        
         [SerializeField] private TMP_InputField userInputField;
         [SerializeField] private TMP_Text usernameText;
-
+        [SerializeField] private TMP_Text errorText;
         [SerializeField] private Button confirmNameButton;
-        [SerializeField] private Button renameButton;
 
         private string _savedUsername = string.Empty;
-        private Stack<UIState> _stateHistory = new Stack<UIState>();
+        private readonly Stack<UIState> _stateHistory = new Stack<UIState>();
 
         private class UIState
         {
@@ -42,21 +40,83 @@ namespace Core
 
         private void Start()
         {
+            SetupButtonListeners();
+            _savedUsername = PlayerPrefs.GetString("Username", "");
+            SaveCurrentState("Initial");
+        }
+
+        private void SetupButtonListeners()
+        {
             onlineButton.onClick.AddListener(HandleOnlineButtonClick);
             offlineButton.onClick.AddListener(HandleOfflineButtonClick);
-            websocketChatButton.onClick.AddListener(() => SceneLoader.Instance.LoadScene("WebsocketChatExperiment"));
-            offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
             backButton.onClick.AddListener(HandleBackButton);
             confirmNameButton.onClick.AddListener(HandleConfirmName);
-            renameButton.onClick.AddListener(HandleRename);
             
-            userInputField.onValueChanged.AddListener(newValue => usernameText.text = $"{newValue}");
+            websocketChatButton.onClick.AddListener(HandleWebsocketChatClick);
+            pongGameButton.onClick.AddListener(HandlePongGameClick);
+            offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
+
+            
+            userInputField.onValueChanged.AddListener(newValue => usernameText.text = $"Username: {newValue}");
             userInputField.onSubmit.AddListener(_ => HandleConfirmName());
-            _savedUsername = PlayerPrefs.GetString("Username", "");
+        }
+        
+        private void HandleOnlineButtonClick()
+        {
+            SaveCurrentState("OnlineMenu");
             
-            //PlayerPrefs.DeleteKey("Username"); // DEBUG LINE 
+            onlineButton.gameObject.SetActive(false);
+            offlineButton.gameObject.SetActive(false);
             
-            SaveCurrentState("Initial");
+            userInputField.text = _savedUsername;
+            userInputField.gameObject.SetActive(true);
+            confirmNameButton.gameObject.SetActive(true);
+            usernameText.gameObject.SetActive(true);
+            backButton.gameObject.SetActive(true);
+        }
+
+        private void HandleOfflineButtonClick()
+        {
+            SaveCurrentState("OfflineMenu");
+            onlineButton.gameObject.SetActive(false);
+            offlineButton.gameObject.SetActive(false);
+            offlineScene.gameObject.SetActive(true);
+            backButton.gameObject.SetActive(true);
+        }
+
+        private void HandleConfirmName()
+        {
+            string newUsername = userInputField.text.Trim();
+            if (!string.IsNullOrEmpty(newUsername))
+            {
+                SaveCurrentState("PostNameConfirm");
+                _savedUsername = newUsername;
+                PlayerPrefs.SetString("Username", newUsername);
+                PlayerPrefs.Save();
+                
+                confirmNameButton.gameObject.SetActive(false);
+                userInputField.gameObject.SetActive(false);
+                usernameText.text = $"Username: {newUsername}";
+                websocketChatButton.gameObject.SetActive(true);
+                pongGameButton.gameObject.SetActive(true);
+            }
+            else
+            {
+                PopText(errorText, "Please enter a username!");
+            }
+        }
+
+        private void HandleBackButton()
+        {
+            if (_stateHistory.Count <= 1) return;
+
+            _stateHistory.Pop();
+            var previousState = _stateHistory.Peek();
+
+            foreach (var kvp in previousState.ObjectStates)
+            {
+                kvp.Key.SetActive(kvp.Value);
+            }
         }
 
         private void SaveCurrentState(string stateName)
@@ -71,137 +131,64 @@ namespace Core
             SaveObjectState(state, userInputField?.gameObject);
             SaveObjectState(state, usernameText?.gameObject);
             SaveObjectState(state, confirmNameButton?.gameObject);
-            SaveObjectState(state, renameButton?.gameObject);
 
             _stateHistory.Push(state);
         }
 
         private void SaveObjectState(UIState state, GameObject obj)
         {
-            if (obj != null)
-            {
-                state.ObjectStates[obj] = obj.activeSelf;
-            }
-        }
-
-        private void HandleOnlineButtonClick()
-        {
-            SaveCurrentState("OnlineMenu");
-            
-            onlineButton.gameObject.SetActive(false);
-            offlineButton.gameObject.SetActive(false);
-            WebSocketNetworkHandler.Instance.Connect();
-            
-            if (string.IsNullOrEmpty(_savedUsername))
-            {
-                userInputField.gameObject.SetActive(true);
-                confirmNameButton.gameObject.SetActive(true);
-                usernameText.gameObject.SetActive(true);
-            }
-            else
-            {
-                usernameText.text = $"Welcome back, {_savedUsername}";
-                usernameText.gameObject.SetActive(true);
-                renameButton.gameObject.SetActive(true);
-                websocketChatButton.gameObject.SetActive(true);
-                pongGameButton.gameObject.SetActive(true);
-            }
-            
-            backButton.gameObject.SetActive(true);
-        }
-
-        private void HandleOfflineButtonClick()
-        {
-            SaveCurrentState("OfflineMenu");
-            
-            onlineButton.gameObject.SetActive(false);
-            offlineButton.gameObject.SetActive(false);
-            
-            offlineScene.gameObject.SetActive(true);
-            backButton.gameObject.SetActive(true);
-        }
-
-        private void HandleConfirmName()
-        {
-            string newUsername = userInputField.text.Trim();
-            if (!string.IsNullOrEmpty(newUsername))
-            {
-                SaveCurrentState("PostNameConfirm");
-                
-                PlayerPrefs.SetString("Username", newUsername);
-                PlayerPrefs.Save();
-                
-                SubmitUserNameToServer();
-                
-                confirmNameButton.gameObject.SetActive(false);
-                userInputField.gameObject.SetActive(false);
-                websocketChatButton.gameObject.SetActive(true);
-                pongGameButton.gameObject.SetActive(true);
-                backButton.gameObject.SetActive(true);
-            }
-            else
-            {
-                PopText("Please enter a username!");
-            }
-        }
-
-        private void HandleRename()
-        {
-            SaveCurrentState("RenameMenu");
-            
-            usernameText.gameObject.SetActive(false);
-            renameButton.gameObject.SetActive(false);
-            websocketChatButton.gameObject.SetActive(false);
-            pongGameButton.gameObject.SetActive(false);
-
-            userInputField.text = PlayerPrefs.GetString("Username");
-            userInputField.gameObject.SetActive(true);
-            confirmNameButton.gameObject.SetActive(true);
-            usernameText.gameObject.SetActive(true);
-
-            userInputField.ActivateInputField();
-        }
-
-        private void HandleBackButton()
-        {
-            if (_stateHistory.Count <= 1)
-            {
-                Debug.Log("No previous state to return to");
-                return;
-            }
-
-            var currentState = _stateHistory.Pop();
-            var previousState = _stateHistory.Peek();
-            Debug.Log($"Going back from {currentState.StateName} to {previousState.StateName}");
-
-            foreach (var kvp in previousState.ObjectStates)
-            {
-                kvp.Key.SetActive(kvp.Value);
-            }
+            if (obj != null) state.ObjectStates[obj] = obj.activeSelf;
         }
         
-        private void SubmitUserNameToServer()
+        private void HandleWebsocketChatClick()
         {
-            string username = PlayerPrefs.GetString("Username");
-            if (!string.IsNullOrEmpty(username))
+            WebSocketNetworkHandler.Instance.Connect();
+            StartCoroutine(CheckConnectionAndLoad("WebsocketChatExperiment"));
+        }
+
+        private void HandlePongGameClick()
+        {
+            WebSocketNetworkHandler.Instance.Connect();
+            StartCoroutine(CheckConnectionAndLoad("Pong"));
+
+        }
+
+        private IEnumerator CheckConnectionAndLoad(string sceneName)
+        {
+            errorText.text = "Connecting...";
+            yield return new WaitForSeconds(0.3f);
+
+            if (WebSocketNetworkHandler.Instance.IsConnected)
             {
+                // Send username before changing scene
                 var chatMessage = new ChatData
                 {
                     Type = PacketType.UserInfo,
-                    Text = username
+                    Text = _savedUsername
                 };
                 WebSocketNetworkHandler.Instance.SendWebSocketPackage(chatMessage);
+        
+                // Give a small delay for the server to process
+                yield return new WaitForSeconds(0.2f);
+        
+                // Then load the scene
+                SceneLoader.Instance.LoadScene(sceneName);
+            }
+            else
+            {
+                PopText(errorText, "Failed to connect to server!");
             }
         }
+
         
-        private void PopText(string message)
+        private void PopText(TMP_Text tmpText, string message)
         {
-            usernameText.text = message;
-            usernameText.transform.localScale = Vector3.one;
+            tmpText.text = message;
+            tmpText.transform.localScale = Vector3.one;
     
             Sequence sequence = DOTween.Sequence();
-            sequence.Append(usernameText.transform.DOScale(1.2f, 0.2f))
-                .Append(usernameText.transform.DOScale(1f, 0.1f))
+            sequence.Append(tmpText.transform.DOScale(1.2f, 0.2f))
+                .Append(tmpText.transform.DOScale(1f, 0.1f))
                 .SetEase(Ease.OutBack);
         }
 
@@ -213,7 +200,6 @@ namespace Core
             offlineScene.onClick.RemoveAllListeners();
             backButton.onClick.RemoveAllListeners();
             confirmNameButton.onClick.RemoveAllListeners();
-            renameButton.onClick.RemoveAllListeners();
             userInputField.onValueChanged.RemoveAllListeners();
             userInputField.onSubmit.RemoveAllListeners();
         }

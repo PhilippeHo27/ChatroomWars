@@ -4,31 +4,29 @@ import webbrowser
 import os
 from threading import Timer
 
-# Configuration
 PORT = 8000
-BUILD_DIRECTORY = "."  # Current directory where the script is located
+BUILD_DIRECTORY = os.path.dirname(os.path.abspath(__file__))  # Gets absolute path of script location
 
 def open_browser():
     webbrowser.open(f'http://localhost:{PORT}/index.html')
 
 def main():
-    # Change to the build directory
-    os.chdir(BUILD_DIRECTORY)
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Script directory: {BUILD_DIRECTORY}")
     
-    # Create the server
+    os.chdir(BUILD_DIRECTORY)
+    print(f"Changed to directory: {os.getcwd()}")
+    print(f"Files in directory: {os.listdir('.')}")
+    
     Handler = http.server.SimpleHTTPRequestHandler
     Handler.extensions_map.update({
         '.wasm': 'application/wasm',
     })
 
-    # Configure and start the server
     with socketserver.TCPServer(("", PORT), Handler) as httpd:
         print(f"Serving at http://localhost:{PORT}")
         print("To stop the server, press Ctrl+C")
-        
-        # Open browser after a short delay
         Timer(1.5, open_browser).start()
-        
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

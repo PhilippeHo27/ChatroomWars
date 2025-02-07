@@ -1,4 +1,3 @@
-using UnityEngine;
 using MessagePack;
 using MessagePack.Resolvers;
 using MessagePack.Unity;

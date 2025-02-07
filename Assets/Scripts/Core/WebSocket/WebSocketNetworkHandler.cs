@@ -1,11 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using NativeWebSocket;
-using UnityEngine;
 using Debug = UnityEngine.Debug;
 using MessagePack;
 
@@ -13,30 +10,36 @@ namespace Core.WebSocket
 {
     public class WebSocketNetworkHandler : IndestructibleSingletonBehaviour<WebSocketNetworkHandler>
     {
+        // ## Constants
+        private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
+        private const string ServerUrlHttp = "ws://18.226.150.199:8080"; 
+        private const string ServerUrlLocal = "ws://localhost:8080";
+
+        // ## Core Components
         private NativeWebSocket.WebSocket _webSocket;
+        public bool IsConnected => _webSocket?.State == WebSocketState.Open;
+        private bool _isConnecting;
+
+        // ## Handlers
         private ChatHandler _chatHandler;
         public ChatHandler ChatHandler { get => _chatHandler; set => _chatHandler = value; }
 
         private MovementHandler _movementHandler;
         public MovementHandler MovementHandler { get => _movementHandler; set => _movementHandler = value; }
-        
-        private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
-        private const string ServerUrlHttp = "ws://18.226.150.199:8080";
-        private const string ServerUrlLocal = "ws://localhost:8080";
 
+        // ## Message Processing
         private readonly Queue<Action> _actions = new Queue<Action>();
-        
         private Dictionary<PacketType, Action<byte[]>> _messageHandlers;
+        private readonly MessagePackConfig _messagePackConfig = new MessagePackConfig();
+
+        // ## User Management
         private byte _clientId;
         public byte ClientId => _clientId;
         private readonly Dictionary<byte, string> _users = new Dictionary<byte, string>();
         public IReadOnlyDictionary<byte, string> Users => _users;
 
-        
-        private bool _isConnecting;
+        // ## Events
         public event Action<bool> OnServerResponse;
-        
-        private readonly MessagePackConfig _messagePackConfig = new MessagePackConfig();
         
         protected override void Awake()
         {
@@ -57,7 +60,7 @@ namespace Core.WebSocket
 
             };
         }
-
+        
         private void Update()
         {
             #if !UNITY_WEBGL || UNITY_EDITOR
@@ -107,8 +110,8 @@ namespace Core.WebSocket
                     _webSocket = null;
                 }
 
-                //_webSocket = new NativeWebSocket.WebSocket(ServerUrlHttPs);
-                _webSocket = new NativeWebSocket.WebSocket(ServerUrlLocal);
+                _webSocket = new NativeWebSocket.WebSocket(ServerUrlHttPs);
+                //_webSocket = new NativeWebSocket.WebSocket(ServerUrlLocal);
 
                 _webSocket.OnMessage += ProcessIncomingMessage;
                 _webSocket.OnOpen += HandleOpen;
@@ -165,22 +168,33 @@ namespace Core.WebSocket
         
         #region Sending
         
-        public void SendWebSocketPackage(BaseWebSocketPackage package)
+        public void SendWebSocketPackage<T>(T package) where T : BaseWebSocketPackage
         {
-            package.SenderId = _clientId;
-            byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
-            
-            //LogPackageDebugInfo(package);
-
-            SendWebSocketPackageAsync(bytes).ContinueWith(task => 
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
-                if (task.IsFaulted)
-                {
-                    Debug.LogError($"Failed to send message: {task.Exception}");
-                }
-            });
-        }
+                Debug.LogError("Cannot send message: WebSocket is not connected");
+                return;
+            }
 
+            package.SenderId = _clientId;
+
+            try 
+            {
+                byte[] bytes = MessagePackSerializer.Serialize(package);
+                SendWebSocketPackageAsync(bytes).ContinueWith(task => 
+                {
+                    if (task.IsFaulted)
+                    {
+                        Debug.LogError($"Send failed: {task.Exception?.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Serialization failed: {ex}");
+            }
+        }
+        
         private void LogPackageDebugInfo(BaseWebSocketPackage package)
         {
             Debug.Log($"Sending package of type: {package.GetType().Name}");
@@ -221,34 +235,16 @@ namespace Core.WebSocket
         }
         private void ProcessIncomingMessage(byte[] data)
         {
-            try
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded == null || decoded.Length < 2) return;
+
+            var packetType = (PacketType)Convert.ToInt32(decoded[1]);
+    
+            if (_messageHandlers.TryGetValue(packetType, out var handler))
             {
-                // Decode as array (MessagePack-encoded) 
-                var decoded = MessagePackSerializer.Deserialize<object[]>(data);
-                if (decoded == null || decoded.Length < 2) return;
-
-                // Safely convert index 1 into a PacketType
-                var typeValue = Convert.ToInt32(decoded[1]);
-                var packetType = (PacketType)typeValue;
-
-                //Debug.Log($"Received message type: {packetType}, array length: {decoded.Length}");
-
-                if (_messageHandlers.TryGetValue(packetType, out var handler))
-                {
-                    //Debug.Log($"Handler found for type {packetType}, enqueueing");
-                    EnqueueMainThread(() => handler(data));
-                }
-                else
-                {
-                    Debug.Log($"No handler found for message type: {packetType}");
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.Log($"Error processing MessagePack data: {e.Message}\nStack: {e.StackTrace}");
+                EnqueueMainThread(() => handler(data));
             }
         }
-
 
         private void ProcessChatMessage(byte[] messagePackData) =>
             _chatHandler?.ProcessIncomingChatData(messagePackData);
@@ -262,7 +258,7 @@ namespace Core.WebSocket
             if (decoded != null && decoded.Length >= 3)
             {
                 _clientId = (byte)decoded[2];
-                Debug.Log($"Assigned Client ID: {_clientId}");
+                //Debug.Log($"Assigned Client ID: {_clientId}");
             }
         }
 
@@ -282,24 +278,21 @@ namespace Core.WebSocket
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {
-                Debug.Log($"Decoded array contents: [{string.Join(", ", decoded)}]");
-                Debug.Log($"Type of decoded[2]: {decoded[2]?.GetType().Name}");
+                //Debug.Log($"Decoded array contents: [{string.Join(", ", decoded)}]");
+                //Debug.Log($"Type of decoded[2]: {decoded[2]?.GetType().Name}");
         
                 bool serverResponse = Convert.ToBoolean(decoded[2]);
-                Debug.Log($"Server Response: {serverResponse}");
-        
+                //Debug.Log($"Server Response: {serverResponse}");
                 OnServerResponse?.Invoke(serverResponse);
             }
         }
         
         private void HandleUserInfo(byte[] data)
         {
-            Debug.Log("allo jsuis ici");
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {
                 var userList = MessagePackSerializer.Deserialize<UserEntry[]>(MessagePackSerializer.Serialize(decoded[2]));
-
                 if (userList != null)
                 {
                     foreach (var user in userList)

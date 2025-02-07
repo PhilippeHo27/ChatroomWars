@@ -14,6 +14,8 @@ namespace Core
         private const string ColorGrey = "#37393C";
         private const string ColorRed = "#D7444C";
         private const string ColorGreen = "#4CAE54";
+        private static readonly Color ColorDarkYellow = new Color(0xE2/255f, 0xB7/255f, 0x14/255f);
+
 
         [SerializeField] private TextMeshProUGUI sampleText;
         [SerializeField] private TextMeshProUGUI countdownTimerText;
@@ -84,7 +86,7 @@ namespace Core
                 }
                 else
                 {
-                    startSimulationImage.color = Color.white;
+                    startSimulationImage.color = ColorDarkYellow;
                 }
             });
             
@@ -92,6 +94,7 @@ namespace Core
             returnToMenuButton.onClick.AddListener(() =>
             {
                 DOTween.KillAll();
+                InputManager.Instance.ClearInputActionSubscribers("AnyKey", InputManager.InputEventType.Performed);
                 SceneLoader.Instance.LoadScene("Intro");
             });
         }
@@ -369,12 +372,6 @@ namespace Core
             };
         }
 
-        private void CleanUp()
-        {
-            InputManager.Instance.ClearInputActionSubscribers("AnyKey", InputManager.InputEventType.Performed);
-
-        }
-        
         private void OnDestroy()
         {
             resetMatchButton.onClick.RemoveAllListeners();
