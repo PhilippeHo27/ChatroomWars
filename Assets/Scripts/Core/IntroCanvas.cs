@@ -15,8 +15,12 @@ namespace Core
         [SerializeField] private Button offlineButton;
         [SerializeField] private Button websocketChatButton;
         [SerializeField] private Button pongGameButton;
+        [SerializeField] private Button vinceGameButton;
         [SerializeField] private Button offlineScene;
+        [SerializeField] private Button offlineVinceGame;
         [SerializeField] private Button backButton;
+        [SerializeField] private Toggle[] aiToggle;
+        [SerializeField] private Toggle[] blindToggle;
         
         [SerializeField] private TMP_InputField userInputField;
         [SerializeField] private TMP_Text usernameText;
@@ -52,9 +56,11 @@ namespace Core
             backButton.onClick.AddListener(HandleBackButton);
             confirmNameButton.onClick.AddListener(HandleConfirmName);
             
-            websocketChatButton.onClick.AddListener(HandleWebsocketChatClick);
-            pongGameButton.onClick.AddListener(HandlePongGameClick);
+            websocketChatButton.onClick.AddListener(() => ConnectToWebsocket("ChatRoom"));
+            pongGameButton.onClick.AddListener(() => ConnectToWebsocket("Pong"));
+            vinceGameButton.onClick.AddListener(() => ConnectToWebsocket("VinceGame"));
             offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
+            offlineVinceGame.onClick.AddListener(LoadVinceOfflineGame);
 
             
             userInputField.onValueChanged.AddListener(newValue => usernameText.text = $"Username: {newValue}");
@@ -81,6 +87,7 @@ namespace Core
             onlineButton.gameObject.SetActive(false);
             offlineButton.gameObject.SetActive(false);
             offlineScene.gameObject.SetActive(true);
+            offlineVinceGame.gameObject.SetActive(true);
             backButton.gameObject.SetActive(true);
         }
 
@@ -99,6 +106,7 @@ namespace Core
                 usernameText.text = $"Username: {newUsername}";
                 websocketChatButton.gameObject.SetActive(true);
                 pongGameButton.gameObject.SetActive(true);
+                vinceGameButton.gameObject.SetActive(true);
             }
             else
             {
@@ -126,7 +134,9 @@ namespace Core
             SaveObjectState(state, offlineButton?.gameObject);
             SaveObjectState(state, websocketChatButton?.gameObject);
             SaveObjectState(state, pongGameButton?.gameObject);
+            SaveObjectState(state, vinceGameButton?.gameObject);
             SaveObjectState(state, offlineScene?.gameObject);
+            SaveObjectState(state, offlineVinceGame?.gameObject);
             SaveObjectState(state, backButton?.gameObject);
             SaveObjectState(state, userInputField?.gameObject);
             SaveObjectState(state, usernameText?.gameObject);
@@ -140,19 +150,19 @@ namespace Core
             if (obj != null) state.ObjectStates[obj] = obj.activeSelf;
         }
         
-        private void HandleWebsocketChatClick()
+        private void ConnectToWebsocket(string sceneName)
         {
             WebSocketNetworkHandler.Instance.Connect();
-            StartCoroutine(CheckConnectionAndLoad("WebsocketChatExperiment"));
+            StartCoroutine(CheckConnectionAndLoad(sceneName));
+
+            if (sceneName == "VinceGame")
+            {
+                GameManager.Instance.playingAgainstAI = aiToggle[0].isOn;
+                GameManager.Instance.blindModeActive = blindToggle[0].isOn;
+                GameManager.Instance.isOnline = true;
+            }
         }
-
-        private void HandlePongGameClick()
-        {
-            WebSocketNetworkHandler.Instance.Connect();
-            StartCoroutine(CheckConnectionAndLoad("Pong"));
-
-        }
-
+        
         private IEnumerator CheckConnectionAndLoad(string sceneName)
         {
             errorText.text = "Connecting...";
@@ -161,7 +171,7 @@ namespace Core
             if (WebSocketNetworkHandler.Instance.IsConnected)
             {
                 // Send username before changing scene
-                var chatMessage = new ChatData
+                var chatMessage = new StringPacket
                 {
                     Type = PacketType.UserInfo,
                     Text = _savedUsername
@@ -192,12 +202,23 @@ namespace Core
                 .SetEase(Ease.OutBack);
         }
 
+        private void LoadVinceOfflineGame()
+        {
+            GameManager.Instance.playingAgainstAI = true;
+            GameManager.Instance.isOnline = false;
+            GameManager.Instance.blindModeActive = blindToggle[1].isOn;
+            SceneLoader.Instance.LoadScene("VinceGame");
+        }
+
         private void OnDestroy()
         {
             onlineButton.onClick.RemoveAllListeners();
             offlineButton.onClick.RemoveAllListeners();
             websocketChatButton.onClick.RemoveAllListeners();
+            pongGameButton.onClick.RemoveAllListeners();
+            vinceGameButton.onClick.RemoveAllListeners();
             offlineScene.onClick.RemoveAllListeners();
+            offlineVinceGame.onClick.RemoveAllListeners();
             backButton.onClick.RemoveAllListeners();
             confirmNameButton.onClick.RemoveAllListeners();
             userInputField.onValueChanged.RemoveAllListeners();

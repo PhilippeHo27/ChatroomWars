@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Intro.unity
     guid: abcf2b24be93c7e4a85a806c9e92732b
   - enabled: 1
-    path: Assets/Scenes/WebsocketChatExperiment.unity
+    path: Assets/Scenes/ChatRoom.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
   - enabled: 1
     path: Assets/Scenes/OfflinePrototype.unity
@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Pong.unity
     guid: ec7a6321cacbc5048b6037f68bcf65bd
+  - enabled: 1
+    path: Assets/Scenes/VinceGame.unity
+    guid: 6512626911426e743a95e8bd02f1a1f3
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

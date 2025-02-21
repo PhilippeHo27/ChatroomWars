@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Core.VinceGame;
 using NativeWebSocket;
 using Debug = UnityEngine.Debug;
 using MessagePack;
@@ -26,6 +27,9 @@ namespace Core.WebSocket
 
         private MovementHandler _movementHandler;
         public MovementHandler MovementHandler { get => _movementHandler; set => _movementHandler = value; }
+        
+        private GamePrototype _vinceGame;
+        public GamePrototype VinceGame { get => _vinceGame; set => _vinceGame = value; }
 
         // ## Message Processing
         private readonly Queue<Action> _actions = new Queue<Action>();
@@ -40,6 +44,7 @@ namespace Core.WebSocket
 
         // ## Events
         public event Action<bool> OnServerResponse;
+        public event Action OnGameReadyResponse;
         
         protected override void Awake()
         {
@@ -168,7 +173,7 @@ namespace Core.WebSocket
         
         #region Sending
         
-        public void SendWebSocketPackage<T>(T package) where T : BaseWebSocketPackage
+        public void SendWebSocketPackage<T>(T package) where T : BaseNetworkPacket
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
@@ -195,12 +200,12 @@ namespace Core.WebSocket
             }
         }
         
-        private void LogPackageDebugInfo(BaseWebSocketPackage package)
+        private void LogPackageDebugInfo(BaseNetworkPacket package)
         {
             Debug.Log($"Sending package of type: {package.GetType().Name}");
             Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}");
     
-            if (package is ChatData chatData)
+            if (package is StringPacket chatData)
             {
                 Debug.Log($"Chat text: {chatData.Text}");
             }
@@ -248,9 +253,10 @@ namespace Core.WebSocket
 
         private void ProcessChatMessage(byte[] messagePackData) =>
             _chatHandler?.ProcessIncomingChatData(messagePackData);
-
         private void ProcessPosition(byte[] messagePackData) =>
             _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
+        private void ProcessVinceGame(byte[] messagePackData) => 
+            _vinceGame?.ReceiveMove(messagePackData);
         
         private void HandleIdAssign(byte[] data)
         {
@@ -278,12 +284,18 @@ namespace Core.WebSocket
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {
-                //Debug.Log($"Decoded array contents: [{string.Join(", ", decoded)}]");
-                //Debug.Log($"Type of decoded[2]: {decoded[2]?.GetType().Name}");
+                int packetType = Convert.ToInt32(decoded[1]);
+                bool response = Convert.ToBoolean(decoded[2]);
         
-                bool serverResponse = Convert.ToBoolean(decoded[2]);
-                //Debug.Log($"Server Response: {serverResponse}");
-                OnServerResponse?.Invoke(serverResponse);
+                switch(packetType)
+                {
+                    case 8: // SERVER_RESPONSE
+                        OnServerResponse?.Invoke(response);
+                        break;
+                    case 12: // VINCE_GAME_CONFIRM_START
+                        OnGameReadyResponse?.Invoke();
+                        break;
+                }
             }
         }
         

@@ -38,11 +38,11 @@ namespace Core.Chatroom
         
         private void CreateRoom()
         {
-            var createData = new RoomAction
+            var createData = new StringPacket
             {
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
                 Type = PacketType.RoomCreate,
-                RoomId = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
+                Text = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
             };
             
             PlayerPrefs.SetString("LastRoomName", roomName.text);
@@ -60,11 +60,11 @@ namespace Core.Chatroom
 
         private void JoinRoom()
         {
-            var joinData = new RoomAction
+            var joinData = new StringPacket
             {
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
                 Type = PacketType.RoomJoin,
-                RoomId = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
+                Text = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
             };
 
             createRoomButton.gameObject.SetActive(false);
@@ -82,11 +82,11 @@ namespace Core.Chatroom
         // this is pinged when we do return/exit out of this mode
         private void LeaveRoom()
         {
-            var leaveData = new RoomAction
+            var leaveData = new StringPacket
             {
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
                 Type = PacketType.RoomLeave,
-                RoomId = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
+                Text = string.IsNullOrEmpty(roomName.text) ? roomId : roomName.text
             };
 
             _awaitingActionType = PacketType.RoomLeave;

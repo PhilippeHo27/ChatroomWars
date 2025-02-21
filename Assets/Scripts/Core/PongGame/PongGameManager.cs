@@ -119,11 +119,11 @@ namespace Core.PongGame
         }
         private void JoinPongRoom()
         {
-            var joinData = new RoomAction
+            var joinData = new StringPacket
             {
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
                 Type = PacketType.RoomJoin,
-                RoomId = "pongRoom"
+                Text = "pongRoom"
             };
 
             Debug.Log(" did i really join?");
@@ -273,11 +273,11 @@ namespace Core.PongGame
 
         private void CleanUpPong()
         {
-            var leaveData = new RoomAction
+            var leaveData = new StringPacket
             {
                 SenderId = WebSocketNetworkHandler.Instance.ClientId,
                 Type = PacketType.RoomLeave,
-                RoomId = "pongRoom"
+                Text = "pongRoom"
             };
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(leaveData);
             

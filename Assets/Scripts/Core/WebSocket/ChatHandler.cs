@@ -57,7 +57,7 @@ namespace Core.WebSocket
             string userInputText = chatInput.text;
             if (!string.IsNullOrEmpty(userInputText))
             {
-                var chatMessage = new ChatData
+                var chatMessage = new StringPacket
                 {
                     Type = PacketType.Chat,
                     Text = userInputText
@@ -75,7 +75,7 @@ namespace Core.WebSocket
         
         public void ProcessIncomingChatData(byte[] messagePackData)
         {
-            var chatData = MessagePackSerializer.Deserialize<ChatData>(messagePackData);
+            var chatData = MessagePackSerializer.Deserialize<StringPacket>(messagePackData);
             if (chatData.SenderId != _wsHandler.ClientId)
             {
                 string userName = GetUserNameById(chatData.SenderId);

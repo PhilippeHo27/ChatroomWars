@@ -38,7 +38,7 @@ namespace Core.WebSocket
         {
             if (!_lastSentPositions.ContainsKey(objectId) || Vector3.Distance(_lastSentPositions[objectId], position) > MOVEMENT_THRESHOLD)
             {
-                var positionMessageVector = new PositionDataVector
+                var positionMessageVector = new ObjectVector3Packet
                 {
                     Type = PacketType.Position,
                     ObjectId = objectId,
@@ -53,7 +53,7 @@ namespace Core.WebSocket
 
         public void ProcessRemotePositionUpdate(byte[] messagePackData)
         {
-            var positionData = MessagePackSerializer.Deserialize<PositionDataVector>(messagePackData);
+            var positionData = MessagePackSerializer.Deserialize<ObjectVector3Packet>(messagePackData);
             if (positionData.SenderId == _wsHandler.ClientId) return;
 
             if (_trackedObjects.TryGetValue(positionData.ObjectId, out GameObject obj))

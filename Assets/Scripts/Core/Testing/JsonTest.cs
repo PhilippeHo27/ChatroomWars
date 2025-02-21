@@ -6,7 +6,7 @@ public class JsonTest : MonoBehaviour
 {
     void Start()
     {
-        var chatMessage = new ChatData
+        var chatMessage = new StringPacket
         {
             Type = PacketType.Chat,
             Text = "Test Message",
