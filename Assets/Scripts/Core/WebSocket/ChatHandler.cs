@@ -23,14 +23,13 @@ namespace Core.WebSocket
         private void Awake()
         {
             _wsHandler = WebSocketNetworkHandler.Instance;
-            WebSocketNetworkHandler.Instance.ChatHandler = this;
+            _wsHandler.ChatHandler = this;
         }
 
         private void Start()
         {
             _textComponentPool = new Queue<TextMeshProUGUI>();
             _activeTextComponents = new List<TextMeshProUGUI>();
-        
             InitializeTextComponentPool();
         }
 

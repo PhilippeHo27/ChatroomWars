@@ -15,7 +15,7 @@ namespace Core.WebSocket
         private void Awake()
         {
             _wsHandler = WebSocketNetworkHandler.Instance;
-            WebSocketNetworkHandler.Instance.MovementHandler = this;
+            _wsHandler.MovementHandler = this;
         }
 
         public void RegisterObject(string objectId, GameObject obj)

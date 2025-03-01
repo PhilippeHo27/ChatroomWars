@@ -18,6 +18,9 @@ namespace Core.WebSocket
 
         // ## Core Components
         private NativeWebSocket.WebSocket _webSocket;
+        private Matchmaking _matchmaking;
+        public Matchmaking Matchmaking { get => _matchmaking; set => _matchmaking = value; }
+
         public bool IsConnected => _webSocket?.State == WebSocketState.Open;
         private bool _isConnecting;
 
@@ -44,11 +47,12 @@ namespace Core.WebSocket
 
         // ## Events
         public event Action<bool> OnServerResponse;
-        public event Action OnGameReadyResponse;
+        public event Action<bool> OnGameStartConfirmation;
         
         protected override void Awake()
         {
             base.Awake();
+            _matchmaking = new Matchmaking(this);
             InitializeMessageHandlers();
             _messagePackConfig.InitMessagePackResolvers();
         }
@@ -61,8 +65,11 @@ namespace Core.WebSocket
                 { PacketType.IdAssign, HandleIdAssign },
                 { PacketType.TimeSync, HandleTimeSync },
                 { PacketType.ServerResponse, HandleServerResponse },
-                { PacketType.UserInfo, HandleUserInfo }
-
+                { PacketType.UserInfo, HandleUserInfo },
+                { PacketType.MatchFound, ProcessMatchFound },
+                { PacketType.GameStartInfo , StartGameConfirmationFromServer },
+                { PacketType.VinceGamePacket, ProcessVinceGame },
+                { PacketType.VinceGameImmune, ProcessImmune }
             };
         }
         
@@ -238,33 +245,51 @@ namespace Core.WebSocket
                 _actions.Enqueue(action);
             }
         }
+        // private void ProcessIncomingMessage(byte[] data)
+        // {
+        //     var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+        //     if (decoded == null || decoded.Length < 2) return;
+        //
+        //     var packetType = (PacketType)Convert.ToInt32(decoded[1]);
+        //
+        //     if (_messageHandlers.TryGetValue(packetType, out var handler))
+        //     {
+        //         EnqueueMainThread(() => handler(data));
+        //         //todo instead of sending data, we can send var decoded object[] instead so we don't have to deserialize twice
+        //     }
+        // }
+        
         private void ProcessIncomingMessage(byte[] data)
         {
-            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
-            if (decoded == null || decoded.Length < 2) return;
+            var reader = new MessagePackReader(data);
+            if (reader.ReadArrayHeader() < 2) return;
+            
+            reader.Skip();
+            var packetType = (PacketType)reader.ReadInt32();
 
-            var packetType = (PacketType)Convert.ToInt32(decoded[1]);
-    
-            if (_messageHandlers.TryGetValue(packetType, out var handler))
+            if (_messageHandlers.TryGetValue(packetType, out var handler)) 
             {
                 EnqueueMainThread(() => handler(data));
             }
         }
-
+        
         private void ProcessChatMessage(byte[] messagePackData) =>
             _chatHandler?.ProcessIncomingChatData(messagePackData);
         private void ProcessPosition(byte[] messagePackData) =>
             _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
         private void ProcessVinceGame(byte[] messagePackData) => 
             _vinceGame?.ReceiveMove(messagePackData);
-        
+        private void ProcessImmune(byte[] messagePackData) => 
+            _vinceGame?.UpdateClientImmunePieces(messagePackData);
+        private void ProcessMatchFound(byte[] messagePackData) => 
+            _matchmaking?.HandleMatchFoundPacket(messagePackData);
+
         private void HandleIdAssign(byte[] data)
         {
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {
                 _clientId = (byte)decoded[2];
-                //Debug.Log($"Assigned Client ID: {_clientId}");
             }
         }
 
@@ -274,8 +299,7 @@ namespace Core.WebSocket
             if (decoded != null && decoded.Length >= 3)
             {
                 long serverTime = Convert.ToInt64(decoded[2]);
-                // Use serverTime as needed
-                //Debug.Log($"Time Sync Received: {serverTime}");
+                // would attach a delegate here and broadcast to whoever needs to know the time
             }
         }
 
@@ -284,23 +308,34 @@ namespace Core.WebSocket
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {
-                int packetType = Convert.ToInt32(decoded[1]);
                 bool response = Convert.ToBoolean(decoded[2]);
-        
-                switch(packetType)
-                {
-                    case 8: // SERVER_RESPONSE
-                        OnServerResponse?.Invoke(response);
-                        break;
-                    case 12: // VINCE_GAME_CONFIRM_START
-                        OnGameReadyResponse?.Invoke();
-                        break;
-                }
+                OnServerResponse?.Invoke(response);
             }
         }
+
+        
+        private void StartGameConfirmationFromServer(byte[] data)
+        {
+            var decoded = MessagePackSerializer.Deserialize<object[]>(data);
+            if (decoded != null && decoded.Length >= 3)
+            {
+                // Extract the first player ID
+                var firstPlayerId = Convert.ToInt32(decoded[2]);
+        
+                // Determine if local player goes first
+                bool isLocalPlayerFirst = (firstPlayerId == _clientId);
+        
+                Debug.Log($"Game starting! First player: {firstPlayerId} (You: {(isLocalPlayerFirst ? "Yes" : "No")})");
+        
+                // Trigger the event with information about who goes first
+                OnGameStartConfirmation?.Invoke(isLocalPlayerFirst);
+            }
+        }
+
         
         private void HandleUserInfo(byte[] data)
         {
+            // We could scale this up and set the dictionnary into its own class if we need more than just user info + his name
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
             {

@@ -2,213 +2,238 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using Core.Singletons;
 using TMPro;
 using DG.Tweening;
 using Core.WebSocket;
 using MessagePack;
+using ColorUtility = UnityEngine.ColorUtility;
 using Debug = UnityEngine.Debug;
-using Random = UnityEngine.Random;
+using static Core.VinceGame.GridGame;
 
 namespace Core.VinceGame
 {
     public class GamePrototype : MonoBehaviour
     {
-        //Data Structures
-        private struct GridData
-        {
-            public bool[] Marks;
-            public string[] Color;
-            public bool[] Immune;
-        }
-
-        private enum GameState
-        {
-            Setup,
-            Battle,
-            EndGame
-        }
+        #region Serialized Fields
+        
+        [SerializeField] private PowerUps powerUps;
         
         // Parameters
         [SerializeField] private bool playAgainstAI = true;
         [SerializeField] private bool testBlind = true;
-        [SerializeField] private bool isOnline = false;
-        [SerializeField] private byte numberOfRounds = 6;
+        [SerializeField] private bool isOnline;
+        [SerializeField] private int numberOfRounds = 6;
         [SerializeField] private float timer = 10f;
-        
-        // Constants
-        private const string ColorGreenSelect = "#A6E22E";
-        private const string ColorBlueSelect = "#4591DB";
-        private const string ColorRedSelect = "#CC3941";
-        
-        private readonly Vector3 _centerPosition = new Vector3(0, 0, 0);
-        private readonly Vector3 _leftPosition = new Vector3(-450, 0, 0);
-        private readonly Vector3 _rightPosition = new Vector3(450, 0, 0);
-        private readonly Vector3 _offscreenPosition = new Vector3(1500, 0, 0);
-        private const float SlideDuration = 0.5f;
-        private const float FadeDuration = 0.3f;
-        
-        // Variables
-        private WebSocketNetworkHandler _wsHandler;
-        private GameState _gameState;
-        private bool _playerIsReady;
-        private float _turnTimer;
-        
-        //Grid Data
-        private GridData _playerGrid;
-        private GridData _opponentGrid;
-        private string _currentPaintColor = "";
-        private bool _isMyTurn = true;
-        private byte _currentRound ;
 
-        //Powerups 
-        private bool _redPowerupUsed;
-        private bool _greenPowerupUsed;
-        private bool _bluePowerupUsed;
-
-        private bool _redPowerupObtained;
-        private bool _greenPowerupObtained;
-        private bool _bluePowerupObtained;
-        
         // UI References
         [SerializeField] private CanvasGroup setupCanvasGroup;
         [SerializeField] private CanvasGroup battleCanvasGroup;
         [SerializeField] private CanvasGroup endGameCanvasGroup;
-            
+
         // Setup Canvas
+        [SerializeField] private TMP_Text countdownText;
+        [SerializeField] private CanvasGroup mainPage;
+        [SerializeField] private CanvasGroup readyPage;
         [SerializeField] private Button readyButton;
-        [SerializeField] private Button quitButton;
-        [SerializeField] private TMP_InputField[] userInputParameter;
         [SerializeField] private Toggle[] someWinConditionToggle;
-        
+
         // Main Canvas
         [SerializeField] private TMP_Text playerNameText;
         [SerializeField] private TMP_Text opponentNameText;
-        [SerializeField] private TMP_Text timerText;
         [SerializeField] private Image timerFill;
-        
         [SerializeField] private Button[] gridButtons = new Button[9];
         [SerializeField] private Image[] gridButtonImages = new Image[9];
         [SerializeField] private Image[] otherBoard = new Image[9];
-
         [SerializeField] private GameObject playerBoard;
         [SerializeField] private GameObject opponentBoard;
         [SerializeField] private CanvasGroup playerBoardCanvasGroup;
         [SerializeField] private CanvasGroup opponentBoardCanvasGroup;
-
         [SerializeField] private Button[] colorChoosingButtons = new Button[3];
         [SerializeField] private TMP_Text playerTurnText;
         [SerializeField] private TMP_Text opponentTurnText;
         [SerializeField] private TMP_Text currentRoundText;
         [SerializeField] private TMP_Text[] specialUsedText;
-        [SerializeField] private CanvasGroup[] specialsGroups;
+        
         [SerializeField] private Button shieldButton;
         [SerializeField] private Button revealButton;
         [SerializeField] private Button extraButton;
-        
+
         // End game Canvas
         [SerializeField] private Button replayButton;
-        [SerializeField] private Button quitButtonTwo;
         [SerializeField] private TMP_Text gameOverText;
         [SerializeField] private TMP_Text playerScoreText;
         [SerializeField] private TMP_Text opponentScoreText;
-
+        [SerializeField] private TMP_Text playAgainText;
+        
         // Cursor Data
+        [SerializeField] private Texture2D[] cursorTextures = new Texture2D[2];
+        #endregion
+        
+        #region Member Variables
+
+        // Core variables
+        private WebSocketNetworkHandler _wsHandler;
+        private GameManager _gameManager;
+        private Automated _ai;
+
+        private GameState _gameState;
+        private bool _playerIsReady;
+        private float _turnTimer;
+        private int _countdownTimer;
+        private Coroutine _timerCoroutine;
+        
+        // Grid data
+        private GridData _playerGrid;
+        private GridData _opponentGrid;
+        public string CurrentPaintColor { get; set; }
+        private bool _isMyTurn = true;
+        private int _currentRound;
+        private int _totalTurns;
+        private int _maxTurns;
+
+        // Cursor
         private Texture2D _cursorTexture;
         private Vector2 _cursorHotspot;
-        [SerializeField] private Texture2D[] cursorTextures = new Texture2D[2];
+
+        #endregion
+        
+        #region Core Game Functions
+        
+        private void Awake()
+        {
+            _ai = new Automated(this);
+            _gameManager = GameManager.Instance;
+            _wsHandler = WebSocketNetworkHandler.Instance;
+            _wsHandler.VinceGame = this;
+        }
 
         private void Start()
         {
-            playAgainstAI = GameManager.Instance.playingAgainstAI;
-            testBlind = GameManager.Instance.blindModeActive;
-            isOnline = GameManager.Instance.isOnline;
+            playAgainstAI = _gameManager.playingAgainstAI;
+            testBlind = _gameManager.blindModeActive;
+            isOnline = _gameManager.isOnline;
+            _maxTurns = numberOfRounds * 2;
             
-            _wsHandler = WebSocketNetworkHandler.Instance;
-            WebSocketNetworkHandler.Instance.VinceGame = this;
-
-            StateChanger(GameState.Setup, false);
+            numberOfRounds = _gameManager.numberOfRounds;
+            _turnTimer = _gameManager.timer;
+            CurrentPaintColor = "";
             
-            _wsHandler.OnServerResponse += ReceiveWhoStartsFirst;
-            _wsHandler.OnGameReadyResponse += ReceiveReadyState;
+            playerNameText.text = PlayerPrefs.GetString("Username", "");
+            
+            StateChanger(playAgainstAI ? GameState.Battle : GameState.Setup, false);
+            if (playAgainstAI) StartGameAI();
+            
+            _wsHandler.OnGameStartConfirmation += ReceiveReadyState;
+            _wsHandler.Matchmaking.OnMatchFound += MatchFound;
             
             InitializeGrids();
             InitButtons();
             InitializeCursor();
-            InitializePowerupUI();
+            powerUps.InitializePowerups();
             InitializeGUIPositions();
+        }
+
+        private void StartGame(bool isMyTurn)
+        {
+            _isMyTurn = isMyTurn;
             
+            if (_isMyTurn) _gameManager.TextAnimations.PopText(playerTurnText, " You start! ");
+            else _gameManager.TextAnimations.Typewriter(playerTurnText, " Waiting...");
+            
+            StateChanger(GameState.Battle);
+            if (_isMyTurn) _timerCoroutine = StartCoroutine(TimerCoroutine());
+        }
+
+        private void StartGameAI()
+        {
+            _isMyTurn = true;
+            _timerCoroutine = StartCoroutine(TimerCoroutine());
+        }
+        
+        private void ResetGame()
+        {
+            DOTween.KillAll();
+            countdownText.alpha = 1f;
+            
+            InitializeGrids();
+            ResetGridColors();
+            InitializeGUIPositions();
+            ResetCursor();
+            powerUps.InitializePowerups();
+            
+            _turnTimer = timer;
+            _currentRound = 0;
+            _totalTurns = 0;
+            _maxTurns = numberOfRounds * 2;
+            currentRoundText.text = $"Round: {_currentRound}";
+            UpdateTurnIndicators();
+
+            StateChanger(GameState.Setup);
+            _gameManager.TextAnimations.Typewriter(countdownText, "Press Ready to go again");
+
             if (playAgainstAI)
             {
-                opponentNameText.text = "AI player";
+                StartGame(true);
+                StateChanger(GameState.Battle, false);
             }
+        }
+        
+        private void ResetGridColors()
+        {
+            for (int i = 0; i < gridButtons.Length; i++)
+            {
+                ChangeButtonColor(i, "#FFFFFF");
+                otherBoard[i].color = Color.white;
+            }
+        }
+        public void QuitGame()
+        {
+            CleanUp();
+            SceneLoader.Instance.LoadScene("MainMenu");
+        }
+        private void CleanUp()
+        {
+            // Unsubscribe from WebSocket events
+            _wsHandler.OnGameStartConfirmation -= ReceiveReadyState;
+            _wsHandler.Matchmaking.OnMatchFound -= MatchFound;
             
-            for (int i = 0; i < userInputParameter.Length; i++)
-            {
-                int index = i;
-                userInputParameter[i].contentType = TMP_InputField.ContentType.IntegerNumber;
-                userInputParameter[i].onEndEdit.AddListener(value => OnParameterChanged(value, index));
-                Debug.Log($"Input field {i} name: {userInputParameter[i].name}");
-            }
+            // Reset the game state
             
-            // userInputParameter[0].onEndEdit.AddListener(value => OnParameterChanged(value, 0));
-            // userInputParameter[1].onEndEdit.AddListener(value => OnParameterChanged(value, 1));
-            //
-            _turnTimer = timer;
+            ResetGame();
         }
-        
-        private void Update()
+
+        private void EndGame()
         {
-            if (_gameState == GameState.Battle && _isMyTurn)
-            {
-                UpdateTimer();
-            }
+            int playerScore = _playerGrid.Marks.Count(mark => mark);
+            int opponentScore = _opponentGrid.Marks.Count(mark => mark);
+
+            Debug.Log($"Final Scores - Player: {playerScore}, Opponent: {opponentScore}");
+
+            // Set game state
+            StateChanger(GameState.EndGame);
+
+            // Set all text contents
+            string resultMessage = playerScore > opponentScore 
+                ? "YOU WIN!" 
+                : playerScore < opponentScore 
+                    ? "YOU LOSE!" 
+                    : "IT'S A TIE!";
+
+            gameOverText.text = $"GAME OVER\n{resultMessage}";
+            playerScoreText.text = $"Your Score: {playerScore}";
+            opponentScoreText.text = $"Opponent Score: {opponentScore}";
+
+            _gameManager.TextAnimations.CreateBreathingAnimation(gameOverText.transform);
+
+            //Debug.Log($"Game ended - {resultMessage} (Player: {playerScore} vs Opponent: {opponentScore})");
         }
+
+        #endregion
         
-        private void UpdateTimer()
-        {
-            _turnTimer -= Time.deltaTime;
+        #region Initializers
 
-            timerText.text = _turnTimer.ToString("F2");
-    
-            timerFill.fillAmount = _turnTimer / timer;
-
-            if (_turnTimer <= 0)
-            {
-                _turnTimer = timer;
-                ForcePlayerMove();
-            }
-        }
-
-        private void ForcePlayerMove()
-        {
-            List<int> availablePositions = new List<int>();
-            for (int i = 0; i < _playerGrid.Marks.Length; i++)
-            {
-                if (!_playerGrid.Marks[i])
-                {
-                    availablePositions.Add(i);
-                }
-            }
-
-            if (availablePositions.Count > 0)
-            {
-                int randomPosition = availablePositions[Random.Range(0, availablePositions.Count)];
-
-                // Select a random color
-                string[] colors = new string[] { ColorGreenSelect, ColorBlueSelect, ColorRedSelect };
-                string randomColor = colors[Random.Range(0, colors.Length)];
-                SetPaintColor(randomColor);
-                UpdateCursor(Array.IndexOf(colors, randomColor));
-
-                // Simulate a click on the random grid button
-                OnGridButtonClick(gridButtons[randomPosition]);
-            }
-        }
-        
-        // Init functions
         private void InitializeGrids()
         {
             _playerGrid.Marks = new bool[9];
@@ -227,9 +252,7 @@ namespace Core.VinceGame
         private void InitButtons()
         {
             readyButton.onClick.AddListener(SendReady);
-            quitButton.onClick.AddListener(QuitGame);
             replayButton.onClick.AddListener(ResetGame);
-            quitButtonTwo.onClick.AddListener(QuitGame);
 
             for (int i = 0; i < colorChoosingButtons.Length; i++)
             {
@@ -243,17 +266,16 @@ namespace Core.VinceGame
                 gridButtons[i].onClick.AddListener(() => OnGridButtonClick(gridButtons[buttonIndex]));
             }
 
-            shieldButton.onClick.AddListener(ShieldPieces);
-            revealButton.onClick.AddListener(RevealBoard);
-            extraButton.onClick.AddListener(EnableExtraTurn);
+            shieldButton.onClick.AddListener( () => powerUps.ShieldPieces(isOnline,_playerGrid));
+            revealButton.onClick.AddListener(powerUps.RevealBoard);
+            extraButton.onClick.AddListener(powerUps.EnableExtraTurn);
         }
         private void InitializeGUIPositions()
         {
             if (!playAgainstAI || testBlind)
             {
-                // Center the board
-                playerBoard.transform.localPosition = _centerPosition;
-                opponentBoard.transform.localPosition = _offscreenPosition;
+                playerBoard.transform.localPosition = CenterPosition;
+                opponentBoard.transform.localPosition = OffscreenPosition;
                 opponentBoardCanvasGroup.alpha = 0f;
             }
             else
@@ -262,35 +284,9 @@ namespace Core.VinceGame
             }
         }
         
-        private void OnParameterChanged(string value, int index)
-        {
-            if (string.IsNullOrEmpty(value)) return;
-    
-            if (float.TryParse(value, out float inputValue))
-            {
-                switch (index)
-                {
-                    case 0:
-                        numberOfRounds = (byte)inputValue;
-                        break;
-                    case 1:
-                        timer = inputValue;
-                        _turnTimer = timer;
-                        timerText.text = timer.ToString("F1");
-                        break;
+        #endregion
 
-                }
-            }
-        }
-
-        
-        // Setup
-        private void StartGame()
-        {
-            _isMyTurn = true;
-            StateChanger(GameState.Battle);
-        }
-
+        #region Game Visuals
         private void StateChanger(GameState state, bool shouldLerp = true)
         {
             SetAllCanvasesNonInteractable();
@@ -299,28 +295,37 @@ namespace Core.VinceGame
             {
                 case GameState.Setup:
                     TransitionCanvas(setupCanvasGroup, true, shouldLerp);
-                    TransitionCanvas(battleCanvasGroup, false, shouldLerp);
-                    TransitionCanvas(endGameCanvasGroup, false, shouldLerp);
+                    TransitionCanvas(battleCanvasGroup, false,false);
+                    TransitionCanvas(endGameCanvasGroup, false, false);
                     break;
 
                 case GameState.Battle:
-                    TransitionCanvas(setupCanvasGroup, false, shouldLerp);
+                    TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(battleCanvasGroup, true, shouldLerp);
-                    TransitionCanvas(endGameCanvasGroup, false, shouldLerp);
+                    TransitionCanvas(endGameCanvasGroup, false, false);
+                    playerBoardCanvasGroup.alpha = 1f;
+                    playerBoardCanvasGroup.interactable = true;
+                    playerBoardCanvasGroup.blocksRaycasts = true;
+                    
+                    opponentBoardCanvasGroup.alpha = 1f;
+                    opponentBoardCanvasGroup.interactable = true;
+                    opponentBoardCanvasGroup.blocksRaycasts = true;
+                    
+                    Debug.Log("I SHOULD ENTER HERE WHEN WE DO NEW GAME!!!!!!");
                     break;
 
                 case GameState.EndGame:
-                    TransitionCanvas(setupCanvasGroup, false, shouldLerp);
-                    TransitionCanvas(battleCanvasGroup, false, shouldLerp);
+                    TransitionCanvas(setupCanvasGroup, false, false);
+                    TransitionCanvas(battleCanvasGroup, false, false);
                     TransitionCanvas(endGameCanvasGroup, true, shouldLerp);
                     LerpCanvasGroup(playerBoardCanvasGroup, 0f);
                     LerpCanvasGroup(opponentBoardCanvasGroup, 0f);
+                    _gameManager.TextAnimations.Typewriter(playAgainText, " Play again?");
                     break;
             }
 
             _gameState = state;
         }
-
         private void SetAllCanvasesNonInteractable()
         {
             setupCanvasGroup.interactable = false;
@@ -329,8 +334,7 @@ namespace Core.VinceGame
             setupCanvasGroup.blocksRaycasts = false;
             battleCanvasGroup.blocksRaycasts = false;
             endGameCanvasGroup.blocksRaycasts = false;
-        }
-
+        }       
         private void TransitionCanvas(CanvasGroup group, bool active, bool shouldLerp = true)
         {
             float targetAlpha = active ? 1f : 0f;
@@ -350,52 +354,47 @@ namespace Core.VinceGame
                 group.blocksRaycasts = active;
             }
         }
-
-        private void LerpCanvasGroup(CanvasGroup group, float targetAlpha)
+        private void LerpCanvasGroup(CanvasGroup group, float targetAlpha, bool shouldLerp = true)
         {
-            // Immediately set interactability based on target
             group.interactable = targetAlpha > 0;
             group.blocksRaycasts = targetAlpha > 0;
-
-            // Using DOTween (since you have it)
-            group.DOFade(targetAlpha, FadeDuration);
+            if (shouldLerp) group.DOFade(targetAlpha, FadeDuration);
         }
-        // Visuals
-        private void SetSideBySideView(bool animate)
+        public void SetSideBySideView(bool animate)
         {
             if (animate)
             {
                 // Animate player board to left
-                playerBoard.transform.DOLocalMove(_leftPosition, SlideDuration);
+                playerBoard.transform.DOLocalMove(LeftPosition, SlideDuration);
             
                 // Slide in and fade in opponent board
-                opponentBoard.transform.DOLocalMove(_rightPosition, SlideDuration);
+                opponentBoard.transform.DOLocalMove(RightPosition, SlideDuration);
                 opponentBoardCanvasGroup.DOFade(1f, FadeDuration);
             }
             else
             {
                 // Instant positioning
-                playerBoard.transform.localPosition = _leftPosition;
-                opponentBoard.transform.localPosition = _rightPosition;
+                playerBoard.transform.localPosition = LeftPosition;
+                opponentBoard.transform.localPosition = RightPosition;
                 opponentBoardCanvasGroup.alpha = 1f;
             }
         }
-        private void SetCenteredView(bool animate)
+        public void SetCenteredView(bool animate)
         {
             if (animate)
             {
                 // Animate player board to center
-                playerBoard.transform.DOLocalMove(_centerPosition, SlideDuration);
+                playerBoard.transform.DOLocalMove(CenterPosition, SlideDuration);
             
                 // Slide out and fade out opponent board
-                opponentBoard.transform.DOLocalMove(_offscreenPosition, SlideDuration);
+                opponentBoard.transform.DOLocalMove(OffscreenPosition, SlideDuration);
                 opponentBoardCanvasGroup.DOFade(0f, FadeDuration);
             }
             else
             {
                 // Instant positioning
-                playerBoard.transform.localPosition = _centerPosition;
-                opponentBoard.transform.localPosition = _offscreenPosition;
+                playerBoard.transform.localPosition = CenterPosition;
+                opponentBoard.transform.localPosition = OffscreenPosition;
                 opponentBoardCanvasGroup.alpha = 0f;
             }
         }
@@ -417,7 +416,7 @@ namespace Core.VinceGame
                     UpdateCursor(2);
                     break;
             }
-            SetPaintColor(selectedColor);
+            CurrentPaintColor = selectedColor;
         }
         private void UpdateCursor(int colorIndex)
         {
@@ -437,42 +436,91 @@ namespace Core.VinceGame
                 gridButtonImages[buttonIndex].color = color;
             }
         }
-        private void SetPaintColor(string hexColor)
+
+        private void UpdateTurnIndicators()
         {
-            _currentPaintColor = hexColor;
-        }
-        
-        
-        // Core mechanics
-        private void OnGridButtonClick(Button clickedButton)
-        {
-            if (!string.IsNullOrEmpty(_currentPaintColor) && _isMyTurn)
+            if (playerTurnText != null)
             {
-                int buttonIndex = System.Array.IndexOf(gridButtons, clickedButton);
+                playerTurnText.text = _isMyTurn ? "Your Turn" : "Waiting...";
+                _gameManager.TextAnimations.PopThenBreathe(playerTurnText.transform);
+            }
+    
+            if (opponentTurnText != null)
+            {
+                opponentTurnText.text = _isMyTurn ? "Waiting..." : "AI Turn";
+                _gameManager.TextAnimations.PopThenBreathe(opponentTurnText.transform);
+            }
+        }
+
+        #endregion
+        
+        #region Core Mechanics
+        public void OnGridButtonClick(Button clickedButton)
+        {
+            if (!string.IsNullOrEmpty(CurrentPaintColor) && _isMyTurn)
+            {
+
+                int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
 
                 _playerGrid.Marks[buttonIndex] = true;
-                _playerGrid.Color[buttonIndex] = _currentPaintColor;
-                //Debug.Log($"Player placed color: {_currentPaintColor} at {buttonIndex}");
-
-                ChangeButtonColor(buttonIndex, _currentPaintColor);
-
-                _currentPaintColor = "";
+                _playerGrid.Color[buttonIndex] = CurrentPaintColor;
+        
+                ChangeButtonColor(buttonIndex, CurrentPaintColor);
+                CurrentPaintColor = "";
                 ResetCursor();
+                powerUps.ResetBluePowerUp();
 
-                StartCoroutine(EndOfTurnSequence(buttonIndex));
+                StartCoroutine(ProcessTurn(buttonIndex, true)); // true = isLocalPlayerMove
             }
         }
-
-        private IEnumerator EndOfTurnSequence(int buttonIndex)
+        private IEnumerator ProcessTurn(int buttonIndex, bool isLocalPlayerMove)
         {
-            if (_opponentGrid.Marks[buttonIndex])
+            // Handle conflict resolution
+            string originalColor = _playerGrid.Color[buttonIndex];
+
+            if (isLocalPlayerMove)
             {
-                yield return StartCoroutine(ResolveConflict(buttonIndex));
+                if (_opponentGrid.Marks[buttonIndex])
+                {
+                    yield return StartCoroutine(ResolveConflict(buttonIndex));
+                }
+            }
+            else 
+            {
+                if (_playerGrid.Marks[buttonIndex])
+                {
+                    yield return StartCoroutine(ResolveConflict(buttonIndex));
+                }
             }
 
+            // Check for patterns todo this can be moved  into islocal player move im pretty sure
             yield return StartCoroutine(CheckPatternsCoroutine());
 
-            yield return StartCoroutine(EndTurn(playAgainstAI, buttonIndex));
+            if (powerUps.redPowerActivated && isLocalPlayerMove)
+            {
+                Debug.Log("Extra turn applied!!");
+                powerUps.ResetRedPowerup();
+                powerUps.redPowerActivated = false;
+                yield break; 
+            }
+            
+            if (isLocalPlayerMove)
+            {
+                SwapTurns();
+        
+                if (playAgainstAI)
+                {
+                    StartCoroutine(ArtificialOpponent());
+                }
+                else if (isOnline)
+                {
+                    SendMove(buttonIndex, originalColor);
+                }
+            }
+            else
+            {
+                SwapTurns();
+            }
         }
         private IEnumerator ResolveConflict(int position)
         {
@@ -540,6 +588,24 @@ namespace Core.VinceGame
                     return (false, false);
             }
         }
+        
+        private void ClearSquare(int position, bool isPlayerSquare)
+        {
+            Color whiteColor = Color.white;
+
+            if (isPlayerSquare)
+            {
+                gridButtonImages[position].color = whiteColor;
+                _playerGrid.Marks[position] = false;
+                _playerGrid.Color[position] = "";
+            }
+            else
+            {
+                otherBoard[position].color = whiteColor;
+                _opponentGrid.Marks[position] = false;
+                _opponentGrid.Color[position] = "";
+            }
+        }
         private IEnumerator CheckPatternsCoroutine()
         {
             // We always check the active player's grid
@@ -570,323 +636,85 @@ namespace Core.VinceGame
             if (!grid.Marks[a] || !grid.Marks[b] || !grid.Marks[c]) return false;
             if (grid.Color[a] != grid.Color[b] || grid.Color[b] != grid.Color[c]) return false;
 
-            Debug.Log($"Found match with color: {grid.Color[a]}");
-    
-            // Only process powerups if it's the player's turn
+            //Debug.Log($"Found match with color: {grid.Color[a]}");
             if (!_isMyTurn) return false;
 
-            return ProcessPowerup(grid.Color[a]);
-        }
-        private bool ProcessPowerup(string color)
-        {
-            switch (color)
-            {
-                case ColorGreenSelect when !_redPowerupObtained:
-                    _redPowerupObtained = true;
-                    StartCoroutine(ActivatePowerupUI(0));
-                    return true;
-            
-                case ColorBlueSelect when !_greenPowerupObtained:
-                    _greenPowerupObtained = true;
-                    StartCoroutine(ActivatePowerupUI(1));
-                    return true;
-            
-                case ColorRedSelect when !_bluePowerupObtained:
-                    _bluePowerupObtained = true;
-                    StartCoroutine(ActivatePowerupUI(2));
-                    return true;
-            }
-            return false;
-        }
-        private IEnumerator EndTurn(bool againstAI, int index)
-        {
-            // originaly implemented a slow-down effect to signify end of turn, can redo later
-            SwapTurns();
-
-            if (againstAI)
-            {
-                StartCoroutine(DelayedOpponentMove());
-            }
-            else if(isOnline)
-            {
-                SendMove(index);
-            }
-            yield return null;
+            return powerUps.ProcessPowerup(grid.Color[a]);
         }
         private void SwapTurns()
         {
-            if (_redPowerupUsed && _isMyTurn)
+            _totalTurns++;
+            if (_totalTurns >= _maxTurns)
             {
-                _redPowerupUsed = false;
-                ShowFadingText("Extra turn activated!");
+                EndGame();
                 return;
             }
 
             _isMyTurn = !_isMyTurn;
             _turnTimer = timer;
             UpdateTurnIndicators();
+            HandleTimerBasedOnGameState();
 
             if (_isMyTurn)
             {
-                _currentRound++;
-                
-                Debug.Log(_currentRound);
-                if (CheckGameOver())
-                {
-                    EndGame();
-                    return;
-                }
-        
+                _currentRound = (_totalTurns + (_isMyTurn ? 1 : 0)) / 2;
                 currentRoundText.text = $"Current Round {_currentRound}";
-                ResetPowerups();
+                powerUps.ResetGreenPowerUp(_playerGrid);
             }
         }
 
-        private bool CheckGameOver()
-        {
-            return _currentRound > numberOfRounds;
-        }
-
-        private void EndGame()
-        {
-            // Count occupied squares for each player
-            int playerScore = _playerGrid.Marks.Count(mark => mark);
-            int opponentScore = _opponentGrid.Marks.Count(mark => mark);
-
-            Debug.Log($"Final Scores - Player: {playerScore}, Opponent: {opponentScore}");
-
-            // Set game state
-            StateChanger(GameState.EndGame);
-
-            // Set all text contents
-            string resultMessage = playerScore > opponentScore 
-                ? "YOU WIN!" 
-                : playerScore < opponentScore 
-                    ? "YOU LOSE!" 
-                    : "IT'S A TIE!";
-
-            gameOverText.text = "GAME OVER";
-            currentRoundText.text = resultMessage;
-            playerScoreText.text = $"Your Score: {playerScore}";
-            opponentScoreText.text = $"Opponent Score: {opponentScore}";
-
-            // Animate game over text
-            CreateBreathingAnimation(gameOverText.transform);
-
-            Debug.Log($"Game ended - {resultMessage} (Player: {playerScore} vs Opponent: {opponentScore})");
-        }
-
-        private void ResetPowerups()
-        {
-            // Reset Shield (Green)
-            if (_greenPowerupUsed)
-            {
-                for (int i = 0; i < _playerGrid.Marks.Length; i++)
-                {
-                    _playerGrid.Immune[i] = false;
-                }
-                _greenPowerupUsed = false;
-            }
-
-            // Reset Reveal (Blue)
-            if (_bluePowerupUsed)
-            {
-                SetCenteredView(true);
-                _bluePowerupUsed = false;
-            }
-
-            // Extra Turn (Red) is handled at the start of SwapTurns
-        }
-
-        private IEnumerator DelayedOpponentMove()
+        private IEnumerator ArtificialOpponent()
         {
             yield return new WaitForSeconds(0.5f);
-            SimulateOpponentMove();
-        }
-        private void SimulateOpponentMove()
-        {
-            if (!_isMyTurn)
+            int movePosition = _ai.SimulateOpponentMove(_opponentGrid, otherBoard);
+    
+            if (movePosition >= 0)
             {
-                List<int> availablePositions = new List<int>();
-                for (int i = 0; i < _opponentGrid.Marks.Length; i++)
-                {
-                    if (!_opponentGrid.Marks[i])
-                    {
-                        availablePositions.Add(i);
-                    }
-                }
-
-                if (availablePositions.Count > 0)
-                {
-                    int randomPosition = availablePositions[Random.Range(0, availablePositions.Count)];
-                    string[] colors = new string[] { ColorGreenSelect, ColorBlueSelect, ColorRedSelect };
-                    string randomColor = colors[Random.Range(0, colors.Length)];
-
-                    _opponentGrid.Marks[randomPosition] = true;
-                    _opponentGrid.Color[randomPosition] = randomColor;
-                    otherBoard[randomPosition].color = GetColorFromHex(randomColor);
-
-                    StartCoroutine(EndOfTurnSequence(randomPosition));
-                }
+                StartCoroutine(ProcessTurn(movePosition, false));
             }
         }
-        private Color GetColorFromHex(string hexColor)
+        
+        private void HandleTimerBasedOnGameState()
         {
-            ColorUtility.TryParseHtmlString(hexColor, out Color color);
-            return color;
-        }
-        private void ClearSquare(int position, bool isPlayerSquare)
-        {
-            Color whiteColor = Color.white;
+            if (_timerCoroutine != null)
+            {
+                StopCoroutine(_timerCoroutine);
+                _timerCoroutine = null;
+            }
 
-            if (isPlayerSquare)
+            if (_gameState == GameState.Battle && _isMyTurn)
             {
-                gridButtonImages[position].color = whiteColor;
-                _playerGrid.Marks[position] = false;
-                _playerGrid.Color[position] = "";
-            }
-            else
-            {
-                otherBoard[position].color = whiteColor;
-                _opponentGrid.Marks[position] = false;
-                _opponentGrid.Color[position] = "";
+                _timerCoroutine = StartCoroutine(TimerCoroutine());
             }
         }
-        private void UpdateTurnIndicators()
+        private IEnumerator TimerCoroutine()
         {
-            if (playerTurnText != null)
-                playerTurnText.text = _isMyTurn ? "Your Turn" : "Waiting...";
-            if (opponentTurnText != null)
-                opponentTurnText.text = _isMyTurn ? "Waiting..." : "AI Turn";
-        }
-        private void InitializePowerupUI()
-        {
-            foreach (CanvasGroup group in specialsGroups)
+            _turnTimer = timer;
+    
+            while (_turnTimer > 0)
             {
-                group.alpha = 0.1f;
-                group.interactable = false;
-            }
-        }
-        private IEnumerator ActivatePowerupUI(int index)
-        {
-            float duration = 0.5f;
-            float startAlpha = specialsGroups[index].alpha;
-            float targetAlpha = 1.0f;
-            float elapsed = 0;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float normalizedTime = elapsed / duration;
-                specialsGroups[index].alpha = Mathf.Lerp(startAlpha, targetAlpha, normalizedTime);
+                _turnTimer -= Time.deltaTime;
+                _gameManager.TextAnimations.UpdateTimerWithEffects(timerFill, _turnTimer, timer);
                 yield return null;
             }
+            
+            _gameManager.TextAnimations.ResetTimerVisuals(timerFill);
 
-            specialsGroups[index].alpha = targetAlpha;
-            specialsGroups[index].interactable = true;
-        }
-        private IEnumerator DeactivatePowerupUI(int index)
-        {
-            float duration = 0.5f;
-            float startAlpha = specialsGroups[index].alpha;
-            float targetAlpha = 0f;
-            float elapsed = 0;
-
-            specialsGroups[index].interactable = false;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float normalizedTime = elapsed / duration;
-                specialsGroups[index].alpha = Mathf.Lerp(startAlpha, targetAlpha, normalizedTime);
-                yield return null;
-            }
-
-            specialsGroups[index].alpha = targetAlpha;
-        }
-        private void ShieldPieces()
-        {
-            if (_greenPowerupUsed) return;
-
-            ShowFadingText("Shield used");
-            StartCoroutine(DeactivatePowerupUI(0));
-            _greenPowerupUsed = true;
-            List<int> immuneSquares = new List<int>(); 
     
-            for (int i = 0; i < _playerGrid.Marks.Length; i++)
-            {
-                if (_playerGrid.Marks[i])
-                {
-                    Debug.Log("Shielding these indexes: " + i);
-                    _playerGrid.Immune[i] = true;
-                    immuneSquares.Add(i);
-                }
-            }
-    
-            if (isOnline)
-            {
-                SendImmuneStatus(immuneSquares.Select(x => (byte)x).ToArray());
-            }
-        }
-        private void RevealBoard()
-        {
-            if (_bluePowerupUsed) return;
-            ShowFadingText("Reveal board used");
-            StartCoroutine(DeactivatePowerupUI(1));
-        
-            SetSideBySideView(true); // Animate the transition
-        
-            _bluePowerupUsed = true;
-        }
-        private void HideOpponentBoard()
-        {
-            SetCenteredView(true); // Animate back to centered view
-        }
-        private void EnableExtraTurn()
-        {
-            if (_redPowerupUsed) return;
-    
-            ShowFadingText("Extra turn used");
-            StartCoroutine(DeactivatePowerupUI(2));
-            _redPowerupUsed = true;
-        }
-        private void ShowFadingText(string message)
-        {
-            foreach(var txt in specialUsedText)
-            {
-                txt.alpha = 0f;
-                txt.text = message;
-        
-                Sequence fadeSequence = DOTween.Sequence();
-        
-                fadeSequence.Append(txt.DOFade(1f, 0.5f))
-                    .AppendInterval(1f)
-                    .Append(txt.DOFade(0f, 0.5f));
-            }
+            _turnTimer = timer;
+            _ai.ForcePlayerMove(_playerGrid, gridButtons);
         }
         
-        private void CreateBreathingAnimation(Transform target, float scalePulse = 1.1f, float duration = 1f)
-        {
-            DOTween.Kill(target);
-            target.localScale = Vector3.one;
-            Sequence breathingSequence = DOTween.Sequence();
-    
-            breathingSequence.Append(target.DOScale(scalePulse, duration)
-                    .SetEase(Ease.InOutSine))
-                .Append(target.DOScale(1f, duration)
-                    .SetEase(Ease.InOutSine));
-
-            breathingSequence.SetLoops(-1);
-        }
+        #endregion
         
-        //Network
+        #region Network
         private void SendReady()
         {
             _playerIsReady = true;
-
+            
             if (!isOnline || playAgainstAI)
             {
-                StartGame();
+                StartGame(true);
             }
             else
             {
@@ -897,145 +725,88 @@ namespace Core.VinceGame
                 };
                 WebSocketNetworkHandler.Instance.SendWebSocketPackage(isReady);
             }
+            _gameManager.TextAnimations.Typewriter(countdownText, "Ready and waiting...");
         }
-
-        private void ReceiveWhoStartsFirst(bool isStarting)
+        private void MatchFound(string roomId)
         {
-            if (isStarting)
-            {
-                _isMyTurn = true;
-            }
-            else
-            {
-                _isMyTurn = false;
-            }
+            LerpCanvasGroup(mainPage, 0);
+            LerpCanvasGroup(readyPage, 1);
+            _gameManager.TextAnimations.Typewriter(countdownText, "Player Found! Ready?");
+            Debug.Log("Found match and we're in the room called" + roomId);
         }
-
-        private void ReceiveReadyState()
+        private void ReceiveReadyState(bool isMyTurn)
         {
-            StartGame();
+            DOTween.KillAll();
+            StartCoroutine(GameStartCountdown(isMyTurn));
         }
-        
-        private void SendMove(int index)
+        private IEnumerator GameStartCountdown(bool isMyTurn)
+        {
+            // Set up the countdown strings
+            string[] countdownStrings = { "3", "2", "1", "GO!" };
+    
+            // Calculate total animation time
+            float totalAnimationTime = countdownStrings.Length * (0.3f + 0.4f + 0.3f);
+    
+            // Start the countdown animation without waiting for callback
+            _gameManager.TextAnimations.Countdown(
+                countdownText, 
+                countdownStrings,
+                fadeInDuration: 0.3f, 
+                displayDuration: 0.4f, 
+                fadeOutDuration: 0.3f,
+                popScale: 1.2f
+            );
+    
+            // Wait for the exact animation duration
+            yield return new WaitForSecondsRealtime(totalAnimationTime);
+    
+            // Start the game
+            StartGame(isMyTurn);
+        }
+        private void SendMove(int index, string colorBeforeResolution)
         {
             var createData = new VinceGameData
             {
                 Type = PacketType.VinceGamePacket,
                 Index = (byte)index,
-                SquareColor = _playerGrid.Color[index]
+                SquareColor = colorBeforeResolution
             };
+            Debug.Log(createData.Index + " " + createData.SquareColor);
             
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(createData);
         }
-        
         public void ReceiveMove(byte[] messagePackData)
         {
-            SwapTurns();
-            var vinceGameData = MessagePackSerializer.Deserialize<VinceGameData>(messagePackData);
-            if (vinceGameData.SenderId != _wsHandler.ClientId)
+            var receivedData = MessagePackSerializer.Deserialize<VinceGameData>(messagePackData);
+            if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
             {
-                int index = vinceGameData.Index;
+                int index = receivedData.Index;
                 _opponentGrid.Marks[index] = true;
-                _opponentGrid.Color[index] = vinceGameData.SquareColor;
+                _opponentGrid.Color[index] = receivedData.SquareColor;
+                otherBoard[index].color = GetColorFromHex(receivedData.SquareColor);
+            
+                StartCoroutine(ProcessTurn(index, false));
             }
         }
-        
-        private void SendImmuneStatus(byte[] indexes)
+        public void SendImmuneStatus(byte[] indexes)
         {
-            var immunePacket = new VinceGameImmune 
+            var immunePacket = new GridGameIndices 
             {
                 Type = PacketType.VinceGameImmune,
                 Index = indexes
             };
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(immunePacket);
-
         }
-        
-        private void ResetGame()
+
+        public void UpdateClientImmunePieces(byte[] messagePackData)
         {
-            DOTween.KillAll();
-
-            // Reset grid data
-            InitializeGrids();
-            InitializeGUIPositions();
-            
-            // Reset powerup states
-            _redPowerupUsed = false;
-            _greenPowerupUsed = false;
-            _bluePowerupUsed = false;
-            _redPowerupObtained = false;
-            _greenPowerupObtained = false;
-            _bluePowerupObtained = false;
-            InitializePowerupUI();
-
-            // Reset game state
-            _isMyTurn = true; // todo not really accurate
-            _currentRound = 0;
-            currentRoundText.text = $"Current Round {_currentRound}";
-            UpdateTurnIndicators();
-
-            // Reset visual elements
-            ResetCursor();
-            _currentPaintColor = "";
-            
-            playerBoardCanvasGroup.alpha = 1f;
-            playerBoardCanvasGroup.interactable = true;
-            playerBoardCanvasGroup.blocksRaycasts = true;
-
-            opponentBoardCanvasGroup.alpha = 1f;
-            opponentBoardCanvasGroup.interactable = true;
-            opponentBoardCanvasGroup.blocksRaycasts = true;
-
-            // Reset all buttons
-            for (int i = 0; i < gridButtons.Length; i++)
+            var receivedData = MessagePackSerializer.Deserialize<GridGameIndices>(messagePackData);
+            if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
             {
-                ChangeButtonColor(i, "#FFFFFF");
-                otherBoard[i].color = Color.white;
-                gridButtons[i].interactable = true;
+                powerUps.ShieldOpponentPieces(_playerGrid);
             }
-
-            // Reset color choosing buttons
-            foreach (var button in colorChoosingButtons)
-            {
-                button.interactable = true;
-            }
-
-            // Explicitly set setup canvas as interactive
-            setupCanvasGroup.alpha = 1f;
-            setupCanvasGroup.interactable = true;
-            setupCanvasGroup.blocksRaycasts = true;
-
-            // Reset other canvases
-            battleCanvasGroup.alpha = 0f;
-            battleCanvasGroup.interactable = false;
-            battleCanvasGroup.blocksRaycasts = false;
-
-            endGameCanvasGroup.alpha = 0f;
-            endGameCanvasGroup.interactable = false;
-            endGameCanvasGroup.blocksRaycasts = false;
-
-            _gameState = GameState.Setup;
         }
 
-
-
-        private void QuitGame()
-        {
-            CleanUp();
-            //todo: any other quitting logic
-        }
-
-        private void CleanUp()
-        {
-            // Unsubscribe from WebSocket events
-            _wsHandler.OnServerResponse -= ReceiveWhoStartsFirst;
-            _wsHandler.OnGameReadyResponse -= ReceiveReadyState;
-
-            // Reset the game state
-            ResetGame();
-
-            // Additional cleanup (if needed)
-            ResetCursor();
-        }
+        #endregion
     }
 }

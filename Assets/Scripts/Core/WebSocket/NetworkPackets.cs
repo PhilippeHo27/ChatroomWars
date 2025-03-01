@@ -14,13 +14,19 @@ namespace Core.WebSocket
         RoomJoin = 5,
         RoomLeave = 6,
         RoomDestroy = 7,
-        
+    
         ServerResponse = 8,
         UserInfo = 9,
-        
+    
         VinceGamePacket = 10,
         VinceGameImmune = 11,
-        VinceGameConfirmStart
+        VinceGameConfirmStart = 12,
+        MatchmakingRequest = 13,
+        MatchFound = 14,
+    
+        // New packet types for the ready system:
+        GameStartInfo  = 15,
+        OpponentDisconnected = 17
     }
     
     [MessagePackObject]
@@ -38,6 +44,14 @@ namespace Core.WebSocket
         [Key(2)]
         public bool Response { get; set; }
     }
+    
+    [MessagePackObject]
+    public class MatchmakingRequest : BaseNetworkPacket
+    {
+        [Key(2)]
+        public bool IsSearching { get; set; }
+    }
+
     [MessagePackObject]
     public class StringPacket : BaseNetworkPacket
     {
@@ -89,7 +103,7 @@ namespace Core.WebSocket
         public string SquareColor { get; set; } // string for now but it can easily be bytes later
     }
     [MessagePackObject]
-    public class VinceGameImmune : BaseNetworkPacket
+    public class GridGameIndices : BaseNetworkPacket
     {
         [Key(2)] 
         public byte[] Index;

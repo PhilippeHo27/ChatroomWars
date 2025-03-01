@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      binoculars_0: 7227352862411592921
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

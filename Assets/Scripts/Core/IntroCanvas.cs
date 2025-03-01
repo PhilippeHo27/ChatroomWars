@@ -4,55 +4,59 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Core.WebSocket;
-using DG.Tweening;
-using System.Collections.Generic;
 
 namespace Core
 {
     public class IntroCanvas : MonoBehaviour
     {
+        [Header("Canvas Groups")]
+        [SerializeField] private CanvasGroup welcomeScreenGroup;
+        [SerializeField] private CanvasGroup onlineScreenGroup;
+        [SerializeField] private CanvasGroup offlineScreenGroup;
+        
+        [Header("Welcome Screen Elements")]
         [SerializeField] private Button onlineButton;
         [SerializeField] private Button offlineButton;
-        [SerializeField] private Button websocketChatButton;
-        [SerializeField] private Button pongGameButton;
-        [SerializeField] private Button vinceGameButton;
-        [SerializeField] private Button offlineScene;
-        [SerializeField] private Button offlineVinceGame;
-        [SerializeField] private Button backButton;
-        [SerializeField] private Toggle[] aiToggle;
-        [SerializeField] private Toggle[] blindToggle;
         
+        [Header("Online Screen Elements")]
         [SerializeField] private TMP_InputField userInputField;
         [SerializeField] private TMP_Text usernameText;
         [SerializeField] private TMP_Text errorText;
         [SerializeField] private Button confirmNameButton;
+        [SerializeField] private Button websocketChatButton;
+        [SerializeField] private Button pongGameButton;
+        [SerializeField] private Button vinceGameButton;
+        [SerializeField] private TMP_InputField[] userInputParameter;
 
+        [Header("Offline Screen Elements")]
+        [SerializeField] private Button offlineScene;
+        [SerializeField] private Button offlineVinceGame;
+        [SerializeField] private Toggle offlineBlindToggle;
+        
+        [Header("Navigation")]
+        [SerializeField] private Button backButton;
+        
         private string _savedUsername = string.Empty;
-        private readonly Stack<UIState> _stateHistory = new Stack<UIState>();
-
-        private class UIState
-        {
-            public Dictionary<GameObject, bool> ObjectStates { get; }
-            public string StateName { get; }
-
-            public UIState(string name)
-            {
-                ObjectStates = new Dictionary<GameObject, bool>();
-                StateName = name;
-            }
-        }
 
         private void Start()
         {
             SetupButtonListeners();
             _savedUsername = PlayerPrefs.GetString("Username", "");
-            SaveCurrentState("Initial");
+            ShowWelcomeScreen();
+            
+            for (int i = 0; i < userInputParameter.Length; i++)
+            {
+                int index = i;
+                userInputParameter[i].contentType = TMP_InputField.ContentType.IntegerNumber;
+                userInputParameter[i].onEndEdit.AddListener(value => OnParameterChanged(value, index));
+                //Debug.Log($"Input field {i} name: {userInputParameter[i].name}");
+            }
         }
 
         private void SetupButtonListeners()
         {
-            onlineButton.onClick.AddListener(HandleOnlineButtonClick);
-            offlineButton.onClick.AddListener(HandleOfflineButtonClick);
+            onlineButton.onClick.AddListener(ShowOnlineScreen);
+            offlineButton.onClick.AddListener(ShowOfflineScreen);
             backButton.onClick.AddListener(HandleBackButton);
             confirmNameButton.onClick.AddListener(HandleConfirmName);
             
@@ -61,48 +65,76 @@ namespace Core
             vinceGameButton.onClick.AddListener(() => ConnectToWebsocket("VinceGame"));
             offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
             offlineVinceGame.onClick.AddListener(LoadVinceOfflineGame);
-
             
             userInputField.onValueChanged.AddListener(newValue => usernameText.text = $"Username: {newValue}");
             userInputField.onSubmit.AddListener(_ => HandleConfirmName());
         }
         
-        private void HandleOnlineButtonClick()
+        private void ShowWelcomeScreen()
         {
-            SaveCurrentState("OnlineMenu");
+            SetCanvasGroupActive(welcomeScreenGroup, true);
+            SetCanvasGroupActive(onlineScreenGroup, false);
+            SetCanvasGroupActive(offlineScreenGroup, false);
+            backButton.gameObject.SetActive(false);
+        }
+        
+        private void ShowOnlineScreen()
+        {
+            SetCanvasGroupActive(welcomeScreenGroup, false);
+            SetCanvasGroupActive(onlineScreenGroup, true);
+            SetCanvasGroupActive(offlineScreenGroup, false);
+            backButton.gameObject.SetActive(true);
             
-            onlineButton.gameObject.SetActive(false);
-            offlineButton.gameObject.SetActive(false);
-            
+            // Show the name input section
             userInputField.text = _savedUsername;
             userInputField.gameObject.SetActive(true);
             confirmNameButton.gameObject.SetActive(true);
             usernameText.gameObject.SetActive(true);
-            backButton.gameObject.SetActive(true);
+            
+            // Hide game options until name is confirmed
+            websocketChatButton.gameObject.SetActive(false);
+            pongGameButton.gameObject.SetActive(false);
+            vinceGameButton.gameObject.SetActive(false);
         }
-
-        private void HandleOfflineButtonClick()
+        
+        private void ShowOfflineScreen()
         {
-            SaveCurrentState("OfflineMenu");
-            onlineButton.gameObject.SetActive(false);
-            offlineButton.gameObject.SetActive(false);
-            offlineScene.gameObject.SetActive(true);
-            offlineVinceGame.gameObject.SetActive(true);
+            SetCanvasGroupActive(welcomeScreenGroup, false);
+            SetCanvasGroupActive(onlineScreenGroup, false);
+            SetCanvasGroupActive(offlineScreenGroup, true);
             backButton.gameObject.SetActive(true);
         }
-
+        
+        private void HandleBackButton()
+        {
+            errorText.text = "";
+    
+            offlineBlindToggle.isOn = true;
+            
+            userInputField.gameObject.SetActive(true);
+            confirmNameButton.gameObject.SetActive(true);
+    
+            websocketChatButton.gameObject.SetActive(false);
+            pongGameButton.gameObject.SetActive(false);
+            vinceGameButton.gameObject.SetActive(false);
+    
+            ShowWelcomeScreen();
+        }
+        
         private void HandleConfirmName()
         {
             string newUsername = userInputField.text.Trim();
             if (!string.IsNullOrEmpty(newUsername))
             {
-                SaveCurrentState("PostNameConfirm");
                 _savedUsername = newUsername;
                 PlayerPrefs.SetString("Username", newUsername);
                 PlayerPrefs.Save();
                 
+                // Hide name input section
                 confirmNameButton.gameObject.SetActive(false);
                 userInputField.gameObject.SetActive(false);
+                
+                // Show game options
                 usernameText.text = $"Username: {newUsername}";
                 websocketChatButton.gameObject.SetActive(true);
                 pongGameButton.gameObject.SetActive(true);
@@ -110,57 +142,24 @@ namespace Core
             }
             else
             {
-                PopText(errorText, "Please enter a username!");
+                GameManager.Instance.TextAnimations.PopText(errorText, "Please enter a username!");
             }
         }
-
-        private void HandleBackButton()
+        
+        private void SetCanvasGroupActive(CanvasGroup group, bool active)
         {
-            if (_stateHistory.Count <= 1) return;
-
-            _stateHistory.Pop();
-            var previousState = _stateHistory.Peek();
-
-            foreach (var kvp in previousState.ObjectStates)
-            {
-                kvp.Key.SetActive(kvp.Value);
-            }
-        }
-
-        private void SaveCurrentState(string stateName)
-        {
-            var state = new UIState(stateName);
-            SaveObjectState(state, onlineButton?.gameObject);
-            SaveObjectState(state, offlineButton?.gameObject);
-            SaveObjectState(state, websocketChatButton?.gameObject);
-            SaveObjectState(state, pongGameButton?.gameObject);
-            SaveObjectState(state, vinceGameButton?.gameObject);
-            SaveObjectState(state, offlineScene?.gameObject);
-            SaveObjectState(state, offlineVinceGame?.gameObject);
-            SaveObjectState(state, backButton?.gameObject);
-            SaveObjectState(state, userInputField?.gameObject);
-            SaveObjectState(state, usernameText?.gameObject);
-            SaveObjectState(state, confirmNameButton?.gameObject);
-
-            _stateHistory.Push(state);
-        }
-
-        private void SaveObjectState(UIState state, GameObject obj)
-        {
-            if (obj != null) state.ObjectStates[obj] = obj.activeSelf;
+            group.alpha = active ? 1 : 0;
+            group.interactable = active;
+            group.blocksRaycasts = active;
         }
         
         private void ConnectToWebsocket(string sceneName)
         {
+            GameManager.Instance.isOnline = true;
+            GameManager.Instance.blindModeActive = false;
+            GameManager.Instance.playingAgainstAI = false;
             WebSocketNetworkHandler.Instance.Connect();
             StartCoroutine(CheckConnectionAndLoad(sceneName));
-
-            if (sceneName == "VinceGame")
-            {
-                GameManager.Instance.playingAgainstAI = aiToggle[0].isOn;
-                GameManager.Instance.blindModeActive = blindToggle[0].isOn;
-                GameManager.Instance.isOnline = true;
-            }
         }
         
         private IEnumerator CheckConnectionAndLoad(string sceneName)
@@ -170,7 +169,6 @@ namespace Core
 
             if (WebSocketNetworkHandler.Instance.IsConnected)
             {
-                // Send username before changing scene
                 var chatMessage = new StringPacket
                 {
                     Type = PacketType.UserInfo,
@@ -178,36 +176,40 @@ namespace Core
                 };
                 WebSocketNetworkHandler.Instance.SendWebSocketPackage(chatMessage);
         
-                // Give a small delay for the server to process
                 yield return new WaitForSeconds(0.2f);
-        
-                // Then load the scene
                 SceneLoader.Instance.LoadScene(sceneName);
             }
             else
             {
-                PopText(errorText, "Failed to connect to server!");
+                GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server!");
             }
-        }
-
-        
-        private void PopText(TMP_Text tmpText, string message)
-        {
-            tmpText.text = message;
-            tmpText.transform.localScale = Vector3.one;
-    
-            Sequence sequence = DOTween.Sequence();
-            sequence.Append(tmpText.transform.DOScale(1.2f, 0.2f))
-                .Append(tmpText.transform.DOScale(1f, 0.1f))
-                .SetEase(Ease.OutBack);
         }
 
         private void LoadVinceOfflineGame()
         {
             GameManager.Instance.playingAgainstAI = true;
             GameManager.Instance.isOnline = false;
-            GameManager.Instance.blindModeActive = blindToggle[1].isOn;
+            GameManager.Instance.blindModeActive = offlineBlindToggle.isOn;
             SceneLoader.Instance.LoadScene("VinceGame");
+        }
+        
+        private void OnParameterChanged(string value, int index)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+    
+            if (float.TryParse(value, out float inputValue))
+            {
+                switch (index)
+                {
+                    case 0:
+                        GameManager.Instance.numberOfRounds = (byte)inputValue;
+                        break;
+                    case 1:
+                        GameManager.Instance.timer = inputValue;
+                        break;
+
+                }
+            }
         }
 
         private void OnDestroy()

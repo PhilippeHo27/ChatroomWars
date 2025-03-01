@@ -1,3 +1,4 @@
+using Core.Utility;
 using UnityEngine;
 
 namespace Core.Singletons
@@ -10,5 +11,16 @@ namespace Core.Singletons
         public bool blindModeActive = true;
         [HideInInspector]
         public bool isOnline = false;
+
+        public int  numberOfRounds = 6;
+        public float timer = 10;
+
+        private DoTweenSimpleAnimations _textAnimations;
+        public DoTweenSimpleAnimations TextAnimations { get => _textAnimations; set => _textAnimations = value; }
+        protected override void Awake()
+        {
+            base.Awake();
+            _textAnimations = new DoTweenSimpleAnimations();
+        }
     }
 }
