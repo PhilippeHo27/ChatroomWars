@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #000; /* Added background color to body */
+      }
+      #unity-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #000; /* Added background color to container */
+      }
+      #unity-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background-color: #000; /* Fixed placeholder with direct color */
+      }
+      #loading-cover {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #000;
+      }
+      #unity-loading-bar {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      #unity-logo { 
+        text-align: center;
+        max-width: 80%;
+        max-height: 80%;
+        margin-bottom: 10px;
+      }
+      #unity-logo img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      #unity-progress-bar-empty {
+        width: 80%;
+        height: 24px;
+        margin: 10px 20px 20px 10px;
+        text-align: left;
+        border: 1px solid white;
+        padding: 2px;
+      }
+      #unity-progress-bar-full {
+        width: 0%;
+        height: 100%;
+        background: white;
+      }
+      .spinner {
+        margin: 10px;
+        border: 10px solid #f3f3f3;
+        border-top: 10px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas"></canvas>
+    </div>
+    <div id="loading-cover" style="display:none;">
+      <div id="unity-loading-bar">
+        <div id="unity-logo"><img src="logo.png" onerror="this.style.display='none'"></div>
+        <div id="unity-progress-bar-empty" style="display: none;">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    
+    <script>
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      var config = {
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+        // Fixed conditional template syntax
+        memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "{{{ COMPANY_NAME }}}",
+        productName: "{{{ PRODUCT_NAME }}}",
+        productVersion: "{{{ PRODUCT_VERSION }}}",
+      };
+
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingCover = document.querySelector("#loading-cover");
+      var progressBarEmpty = document.querySelector("#unity-progress-bar-empty");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var spinner = document.querySelector(".spinner");
+
+      // Fixed aspect ratio placeholder with default values that will be replaced during build
+      var defaultWidth = 16;
+      var defaultHeight = 9;
+      var canvasAspect = defaultWidth / defaultHeight;
+      
+      function resizeGame() {
+        var windowWidth = window.innerWidth;
+        var windowHeight = window.innerHeight;
+        
+        // Always fill the entire window
+        canvas.style.width = windowWidth + "px";
+        canvas.style.height = windowHeight + "px";
+      }
+      
+      window.addEventListener('resize', resizeGame);
+      resizeGame(); // Initial sizing
+      
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        container.className = "unity-mobile";
+        // Avoid right-click/long press menu on mobile
+        canvas.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+      }
+
+      loadingCover.style.display = "";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          spinner.style.display = "none";
+          progressBarEmpty.style.display = "";
+          progressBarFull.style.width = (100 * progress) + "%";
+        }).then((unityInstance) => {
+          loadingCover.style.display = "none";
+          window.unityInstance = unityInstance; // Make accessible from browser console
+          // Call resize again after loading to ensure correct sizing
+          setTimeout(resizeGame, 200);
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
