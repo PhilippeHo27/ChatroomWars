@@ -159,16 +159,26 @@ namespace Core
             GameManager.Instance.blindModeActive = false;
             GameManager.Instance.playingAgainstAI = false;
             WebSocketNetworkHandler.Instance.Connect();
-            StartCoroutine(CheckConnectionAndLoad(sceneName));
+            StartCoroutine(ConnectWithRetries(sceneName, 3));
         }
         
         private IEnumerator CheckConnectionAndLoad(string sceneName)
         {
             errorText.text = "Connecting...";
-            yield return new WaitForSeconds(0.3f);
+    
+            // Wait for up to 5 seconds for connection to establish
+            float timeoutDuration = 5.0f;
+            float elapsed = 0;
+    
+            while (!WebSocketNetworkHandler.Instance.IsConnected && elapsed < timeoutDuration)
+            {
+                yield return new WaitForSeconds(0.2f);
+                elapsed += 0.2f;
+            }
 
             if (WebSocketNetworkHandler.Instance.IsConnected)
             {
+                // Connection successful
                 var chatMessage = new StringPacket
                 {
                     Type = PacketType.UserInfo,
@@ -184,6 +194,57 @@ namespace Core
                 GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server!");
             }
         }
+        
+        private IEnumerator ConnectWithRetries(string sceneName, int maxRetries = 2)
+        {
+            int retryCount = 0;
+            bool connected = false;
+    
+            while (!connected && retryCount <= maxRetries)
+            {
+                errorText.text = retryCount > 0 ? $"Retrying connection ({retryCount}/{maxRetries})..." : "Connecting...";
+        
+                WebSocketNetworkHandler.Instance.Connect();
+        
+                // Wait for connection with timeout
+                float timeoutDuration = 3.0f;
+                float elapsed = 0;
+        
+                while (!WebSocketNetworkHandler.Instance.IsConnected && elapsed < timeoutDuration)
+                {
+                    yield return new WaitForSeconds(0.2f);
+                    elapsed += 0.2f;
+                }
+        
+                connected = WebSocketNetworkHandler.Instance.IsConnected;
+        
+                if (!connected)
+                {
+                    retryCount++;
+                    yield return new WaitForSeconds(0.5f); // Brief pause between retries
+                }
+            }
+    
+            if (connected)
+            {
+                // Connection successful
+                var chatMessage = new StringPacket
+                {
+                    Type = PacketType.UserInfo,
+                    Text = _savedUsername
+                };
+                WebSocketNetworkHandler.Instance.SendWebSocketPackage(chatMessage);
+        
+                yield return new WaitForSeconds(0.2f);
+                SceneLoader.Instance.LoadScene(sceneName);
+            }
+            else
+            {
+                GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server after multiple attempts!");
+            }
+        }
+
+
 
         private void LoadVinceOfflineGame()
         {

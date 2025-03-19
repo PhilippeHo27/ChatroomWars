@@ -2,7 +2,7 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ChatroomWars</title>
     <style>
       html, body {
@@ -11,7 +11,9 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background-color: #000; /* Added background color to body */
+        background-color: #000;
+        position: fixed; /* Prevents scrolling */
+        touch-action: none; /* Prevents pinch zoom */
       }
       #unity-container {
         position: absolute;
@@ -20,13 +22,13 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        background-color: #000; /* Added background color to container */
+        background-color: #000;
       }
       #unity-canvas {
         width: 100%;
         height: 100%;
         display: block;
-        background-color: #000; /* Fixed placeholder with direct color */
+        background-color: #000;
       }
       #loading-cover {
         position: absolute;
@@ -102,17 +104,15 @@
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/docs.loader.js";
       var config = {
-        dataUrl: buildUrl + "/docs.data",
-        frameworkUrl: buildUrl + "/docs.framework.js",
-        codeUrl: buildUrl + "/docs.wasm",
-        // Fixed conditional template syntax
+        dataUrl: buildUrl + "/docs.data.br",
+        frameworkUrl: buildUrl + "/docs.framework.js.br",
+        codeUrl: buildUrl + "/docs.wasm.br",
         memoryUrl: buildUrl + "/",
         symbolsUrl: buildUrl + "/",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "philippeho27",
         productName: "ChatroomWars",
         productVersion: "1.0",
-        autoSyncPersistentDataPath: true,
       };
 
       var container = document.querySelector("#unity-container");
@@ -128,12 +128,31 @@
       var canvasAspect = defaultWidth / defaultHeight;
       
       function resizeGame() {
+        // Get the actual viewport dimensions (excludes browser UI elements)
         var windowWidth = window.innerWidth;
         var windowHeight = window.innerHeight;
         
-        // Always fill the entire window
-        canvas.style.width = windowWidth + "px";
-        canvas.style.height = windowHeight + "px";
+        // Set container to fill viewport
+        container.style.width = windowWidth + "px";
+        container.style.height = windowHeight + "px";
+        
+        // Maintain aspect ratio for the canvas
+        var containerAspect = windowWidth / windowHeight;
+        
+        if (containerAspect > canvasAspect) {
+          // Container is wider than canvas aspect, height is limiting factor
+          canvas.style.width = (windowHeight * canvasAspect) + "px";
+          canvas.style.height = windowHeight + "px";
+        } else {
+          // Container is taller than canvas aspect, width is limiting factor
+          canvas.style.width = windowWidth + "px";
+          canvas.style.height = (windowWidth / canvasAspect) + "px";
+        }
+        
+        // Center the canvas
+        canvas.style.position = "absolute";
+        canvas.style.left = (windowWidth - canvas.offsetWidth) / 2 + "px";
+        canvas.style.top = (windowHeight - canvas.offsetHeight) / 2 + "px";
       }
       
       window.addEventListener('resize', resizeGame);
@@ -157,13 +176,81 @@
         }).then((unityInstance) => {
           loadingCover.style.display = "none";
           window.unityInstance = unityInstance; // Make accessible from browser console
-          // Call resize again after loading to ensure correct sizing
-          setTimeout(resizeGame, 200);
+          
+          // Call resize with a longer delay to ensure Unity is fully rendered
+          setTimeout(resizeGame, 500);
+          // Set up periodic resize checks for the first few seconds
+          var checkCount = 0;
+          var resizeInterval = setInterval(function() {
+            resizeGame();
+            checkCount++;
+            if (checkCount > 10) clearInterval(resizeInterval);
+          }, 500);
         }).catch((message) => {
           alert(message);
         });
       };
       document.body.appendChild(script);
+
+      document.addEventListener('DOMContentLoaded', function() {
+        // Only for mobile
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          // Allow pinch zoom
+          document.querySelector('meta[name="viewport"]').setAttribute(
+            'content', 
+            'width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover'
+          );
+          
+          // Track zoom level
+          let initialDistance = 0;
+          let currentZoom = 1.0;
+          let maxZoom = 2.5;
+          let minZoom = 1.0;
+          
+          canvas.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+              initialDistance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+              );
+            }
+          });
+          
+          canvas.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+              // Calculate current distance
+              const currentDistance = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+              );
+              
+              // Calculate new zoom level
+              if (initialDistance > 0) {
+                const newZoom = currentZoom * (currentDistance / initialDistance);
+                currentZoom = Math.min(Math.max(newZoom, minZoom), maxZoom);
+                
+                // Apply zoom to canvas
+                canvas.style.transform = `scale(${currentZoom})`;
+                
+                // Prevent default behavior (page zoom)
+                e.preventDefault();
+              }
+              
+              initialDistance = currentDistance;
+            }
+          });
+        }
+      });
+
+      window.addEventListener('orientationchange', function() {
+        // Delay to allow browser UI to settle
+        setTimeout(resizeGame, 100);
+      });
+
+      window.addEventListener('scroll', function() {
+        // Delay to allow browser UI to settle
+        setTimeout(resizeGame, 100);
+      });
     </script>
   </body>
 </html>

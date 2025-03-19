@@ -7978,12 +7978,7 @@ MonoBehaviour:
   playerTurnText: {fileID: 430156712}
   opponentTurnText: {fileID: 536595267}
   currentRoundText: {fileID: 1949687478}
-  specialUsedText:
-  - {fileID: 1678901954}
-  - {fileID: 236103939}
-  shieldButton: {fileID: 107689850}
-  revealButton: {fileID: 2002185784}
-  extraButton: {fileID: 1422461940}
+  announcementText: {fileID: 1678901954}
   replayButton: {fileID: 37237655}
   gameOverText: {fileID: 1361805741}
   playerScoreText: {fileID: 914156049}
@@ -7993,6 +7988,7 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 8ea795c067613354898068091ffc7130, type: 3}
   - {fileID: 2800000, guid: 44a99ee545fd8ba46a452b12c1f9378b, type: 3}
   - {fileID: 2800000, guid: 2a2b4775272c890448e1bd6239fdfc84, type: 3}
+  shieldSelectionMode: 0
 --- !u!4 &1572728934
 Transform:
   m_ObjectHideFlags: 0
@@ -8838,7 +8834,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 290}
-  m_SizeDelta: {x: 300, y: 50}
+  m_SizeDelta: {x: 450, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1678901954
 MonoBehaviour:
@@ -9895,13 +9891,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gamePrototype: {fileID: 1572728933}
-  specialUsedText:
-  - {fileID: 1678901954}
-  - {fileID: 236103939}
+  specialUsedText: {fileID: 1678901954}
   specialsGroups:
   - {fileID: 1147577887}
   - {fileID: 1618219274}
   - {fileID: 1419104069}
+  shieldButton: {fileID: 107689850}
+  revealButton: {fileID: 2002185784}
+  extraButton: {fileID: 1422461940}
   redPowerActivated: 0
 --- !u!1 &1841360547
 GameObject:

@@ -17,10 +17,15 @@ namespace Core.Singletons
 
         private DoTweenSimpleAnimations _textAnimations;
         public DoTweenSimpleAnimations TextAnimations { get => _textAnimations; set => _textAnimations = value; }
+        
+        private ResolutionHandler _resolutionHandler;
+
         protected override void Awake()
         {
             base.Awake();
             _textAnimations = new DoTweenSimpleAnimations();
+            _resolutionHandler = new ResolutionHandler();
+            _resolutionHandler.AdjustResolution();
         }
     }
 }

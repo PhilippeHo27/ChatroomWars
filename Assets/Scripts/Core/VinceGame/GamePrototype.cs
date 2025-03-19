@@ -54,11 +54,11 @@ namespace Core.VinceGame
         [SerializeField] private TMP_Text playerTurnText;
         [SerializeField] private TMP_Text opponentTurnText;
         [SerializeField] private TMP_Text currentRoundText;
-        [SerializeField] private TMP_Text[] specialUsedText;
+        [SerializeField] private TMP_Text announcementText;
         
-        [SerializeField] private Button shieldButton;
-        [SerializeField] private Button revealButton;
-        [SerializeField] private Button extraButton;
+        // [SerializeField] private Button shieldButton;
+        // [SerializeField] private Button revealButton;
+        // [SerializeField] private Button extraButton;
 
         // End game Canvas
         [SerializeField] private Button replayButton;
@@ -92,6 +92,8 @@ namespace Core.VinceGame
         private int _currentRound;
         private int _totalTurns;
         private int _maxTurns;
+        public bool shieldSelectionMode = false;
+
 
         // Cursor
         private Texture2D _cursorTexture;
@@ -138,7 +140,8 @@ namespace Core.VinceGame
         private void StartGame(bool isMyTurn)
         {
             _isMyTurn = isMyTurn;
-            
+            DOTween.KillAll();
+
             if (_isMyTurn) _gameManager.TextAnimations.PopText(playerTurnText, " You start! ");
             else _gameManager.TextAnimations.Typewriter(playerTurnText, " Waiting...");
             
@@ -154,8 +157,6 @@ namespace Core.VinceGame
         
         private void ResetGame()
         {
-            DOTween.KillAll();
-            countdownText.alpha = 1f;
             
             InitializeGrids();
             ResetGridColors();
@@ -163,6 +164,7 @@ namespace Core.VinceGame
             ResetCursor();
             powerUps.InitializePowerups();
             
+            countdownText.alpha = 1f;
             _turnTimer = timer;
             _currentRound = 0;
             _totalTurns = 0;
@@ -172,12 +174,8 @@ namespace Core.VinceGame
 
             StateChanger(GameState.Setup);
             _gameManager.TextAnimations.Typewriter(countdownText, "Press Ready to go again");
-
-            if (playAgainstAI)
-            {
-                StartGame(true);
-                StateChanger(GameState.Battle, false);
-            }
+            
+            if (playAgainstAI) StartGame(true);
         }
         
         private void ResetGridColors()
@@ -191,17 +189,14 @@ namespace Core.VinceGame
         public void QuitGame()
         {
             CleanUp();
-            SceneLoader.Instance.LoadScene("MainMenu");
+            SceneLoader.Instance.LoadScene("Intro");
         }
         private void CleanUp()
         {
             // Unsubscribe from WebSocket events
             _wsHandler.OnGameStartConfirmation -= ReceiveReadyState;
             _wsHandler.Matchmaking.OnMatchFound -= MatchFound;
-            
-            // Reset the game state
-            
-            ResetGame();
+            DOTween.KillAll();
         }
 
         private void EndGame()
@@ -266,9 +261,9 @@ namespace Core.VinceGame
                 gridButtons[i].onClick.AddListener(() => OnGridButtonClick(gridButtons[buttonIndex]));
             }
 
-            shieldButton.onClick.AddListener( () => powerUps.ShieldPieces(isOnline,_playerGrid));
-            revealButton.onClick.AddListener(powerUps.RevealBoard);
-            extraButton.onClick.AddListener(powerUps.EnableExtraTurn);
+            // shieldButton.onClick.AddListener( () => powerUps.ShieldPieces(isOnline,_playerGrid));
+            // revealButton.onClick.AddListener(powerUps.RevealBoard);
+            // extraButton.onClick.AddListener(powerUps.EnableExtraTurn);
         }
         private void InitializeGUIPositions()
         {
@@ -300,9 +295,10 @@ namespace Core.VinceGame
                     break;
 
                 case GameState.Battle:
-                    TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(battleCanvasGroup, true, shouldLerp);
+                    TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(endGameCanvasGroup, false, false);
+
                     playerBoardCanvasGroup.alpha = 1f;
                     playerBoardCanvasGroup.interactable = true;
                     playerBoardCanvasGroup.blocksRaycasts = true;
@@ -311,13 +307,12 @@ namespace Core.VinceGame
                     opponentBoardCanvasGroup.interactable = true;
                     opponentBoardCanvasGroup.blocksRaycasts = true;
                     
-                    Debug.Log("I SHOULD ENTER HERE WHEN WE DO NEW GAME!!!!!!");
                     break;
 
                 case GameState.EndGame:
+                    TransitionCanvas(endGameCanvasGroup, true, shouldLerp);
                     TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(battleCanvasGroup, false, false);
-                    TransitionCanvas(endGameCanvasGroup, true, shouldLerp);
                     LerpCanvasGroup(playerBoardCanvasGroup, 0f);
                     LerpCanvasGroup(opponentBoardCanvasGroup, 0f);
                     _gameManager.TextAnimations.Typewriter(playAgainText, " Play again?");
@@ -457,22 +452,97 @@ namespace Core.VinceGame
         #region Core Mechanics
         public void OnGridButtonClick(Button clickedButton)
         {
+            int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
+
+            // Handle shield selection mode
+            if (shieldSelectionMode)
+            {
+                ApplyShield(buttonIndex);
+                return;
+            }
+
+            // Regular move logic
+            if (_playerGrid.Marks[buttonIndex])
+            {
+                _gameManager.TextAnimations.PopText(announcementText, "Spot taken!", 0.15f, 0.1f, 1.15f);
+                return;
+            }
+
             if (!string.IsNullOrEmpty(CurrentPaintColor) && _isMyTurn)
             {
-
-                int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
-
-                _playerGrid.Marks[buttonIndex] = true;
-                _playerGrid.Color[buttonIndex] = CurrentPaintColor;
-        
-                ChangeButtonColor(buttonIndex, CurrentPaintColor);
-                CurrentPaintColor = "";
-                ResetCursor();
-                powerUps.ResetBluePowerUp();
-
-                StartCoroutine(ProcessTurn(buttonIndex, true)); // true = isLocalPlayerMove
+                ApplyMove(buttonIndex, CurrentPaintColor);
             }
         }
+
+        public void ApplyMove(int position, string color)
+        {
+            if (_playerGrid.Marks[position] || string.IsNullOrEmpty(color) || !_isMyTurn)
+                return;
+        
+            _playerGrid.Marks[position] = true;
+            _playerGrid.Color[position] = color;
+    
+            ChangeButtonColor(position, color);
+            CurrentPaintColor = "";
+            ResetCursor();
+            powerUps.ResetBluePowerUp();
+    
+            StartCoroutine(ProcessTurn(position, true));
+        }
+
+        public void ApplyShield(int position)
+        {
+            if (!_playerGrid.Marks[position] || string.IsNullOrEmpty(_playerGrid.Color[position]))
+            {
+                _gameManager.TextAnimations.PopText(announcementText, "Can only shield your pieces!", 0.15f, 0.1f, 1.15f);
+                return;
+            }
+        
+            _playerGrid.Immune[position] = true;
+            if (isOnline) SendImmuneStatus((byte)position);
+            _gameManager.TextAnimations.PopText(announcementText, "Piece shielded!", 0.15f, 0.1f, 1.15f);
+    
+            shieldSelectionMode = false;
+            powerUps.OnShieldApplied();
+        }
+        
+
+        
+        
+        
+        // public void OnGridButtonClick(Button clickedButton)
+        // {
+        //     int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
+        //
+        //     // First check if position is already marked
+        //     if (_playerGrid.Marks[buttonIndex])
+        //     {
+        //         // Position already taken, show pop-up message
+        //         _gameManager.TextAnimations.PopText(announcementText, "Spot taken!", 0.15f, 0.1f, 1.15f);
+        //         return;
+        //     }
+        //
+        //     // Then check if we have a color selected and it's our turn
+        //     if (!string.IsNullOrEmpty(CurrentPaintColor) && _isMyTurn)
+        //     {
+        //         _playerGrid.Marks[buttonIndex] = true;
+        //         _playerGrid.Color[buttonIndex] = CurrentPaintColor;
+        //
+        //         ChangeButtonColor(buttonIndex, CurrentPaintColor);
+        //         CurrentPaintColor = "";
+        //         ResetCursor();
+        //         powerUps.ResetBluePowerUp();
+        //
+        //         StartCoroutine(ProcessTurn(buttonIndex, true));
+        //     }
+        // }
+        //
+        // public void OnGrindButtonClickForShield(Button clickedButton)
+        // {
+        //     
+        // }
+
+
         private IEnumerator ProcessTurn(int buttonIndex, bool isLocalPlayerMove)
         {
             // Handle conflict resolution
@@ -531,7 +601,32 @@ namespace Core.VinceGame
             {
                 yield break;
             }
+            
             (bool shouldClearPlayer1, bool shouldClearPlayer2) = ResolvingComparison(player1Color, player2Color);
+
+            // Check immunity before proceeding
+            if (shouldClearPlayer1 && _playerGrid.Immune[position])
+            {
+                shouldClearPlayer1 = false; // Don't clear if immune
+                _playerGrid.Immune[position] = false;
+                // Optional: Visual feedback that immunity prevented clearing
+                _gameManager.TextAnimations.PopText(announcementText, "Your piece was protected!", 0.15f, 0.1f, 1.15f);
+            }
+            
+            if (shouldClearPlayer2 && _opponentGrid.Immune[position])
+            {
+                shouldClearPlayer2 = false; // Don't clear if immune
+                _opponentGrid.Immune[position] = false;
+                // Optional: Visual feedback
+                _gameManager.TextAnimations.PopText(announcementText, "Opponent's piece was protected!", 0.15f, 0.1f, 1.15f);
+                ClearSquare(position, true);
+            }
+
+            // If neither should be cleared now, exit early
+            if (!shouldClearPlayer1 && !shouldClearPlayer2)
+            {
+                yield break;
+            }
 
             float elapsedTime = 0f;
             float duration = 1f;
@@ -569,6 +664,7 @@ namespace Core.VinceGame
                 ClearSquare(position, false);
             }
         }
+
         private (bool shouldClearPlayer1, bool shouldClearPlayer2) ResolvingComparison(string player1Color, string player2Color)
         {
             if (player1Color == player2Color)
@@ -659,7 +755,7 @@ namespace Core.VinceGame
             {
                 _currentRound = (_totalTurns + (_isMyTurn ? 1 : 0)) / 2;
                 currentRoundText.text = $"Current Round {_currentRound}";
-                powerUps.ResetGreenPowerUp(_playerGrid);
+                //powerUps.ResetGreenPowerUp(_playerGrid);
             }
         }
 
@@ -690,20 +786,29 @@ namespace Core.VinceGame
         private IEnumerator TimerCoroutine()
         {
             _turnTimer = timer;
-    
+
             while (_turnTimer > 0)
             {
                 _turnTimer -= Time.deltaTime;
                 _gameManager.TextAnimations.UpdateTimerWithEffects(timerFill, _turnTimer, timer);
                 yield return null;
             }
-            
-            _gameManager.TextAnimations.ResetTimerVisuals(timerFill);
-
     
+            _gameManager.TextAnimations.ResetTimerVisuals(timerFill);
             _turnTimer = timer;
-            _ai.ForcePlayerMove(_playerGrid, gridButtons);
+    
+            // Handle shield selection first if active
+            if (shieldSelectionMode)
+            {
+                _ai.ForceShieldSelection(_playerGrid, gridButtons);
+            }
+            // Handle regular move only if it's the player's turn and not in shield mode
+            else if (!string.IsNullOrEmpty(CurrentPaintColor) && _isMyTurn)
+            {
+                _ai.ForcePlayerMove(_playerGrid, gridButtons);
+            }
         }
+
         
         #endregion
         
@@ -798,12 +903,19 @@ namespace Core.VinceGame
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(immunePacket);
         }
 
+        public void SendImmuneStatus(byte index)
+        {
+            // Convert single index to array with one element
+            SendImmuneStatus(new byte[] { index });
+        }
+
+
         public void UpdateClientImmunePieces(byte[] messagePackData)
         {
             var receivedData = MessagePackSerializer.Deserialize<GridGameIndices>(messagePackData);
             if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
             {
-                powerUps.ShieldOpponentPieces(_playerGrid);
+                powerUps.ShieldOpponentPieces(_opponentGrid, receivedData.Index);
             }
         }
 

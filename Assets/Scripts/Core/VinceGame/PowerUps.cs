@@ -1,10 +1,10 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Core.Singletons;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using static Core.VinceGame.GridGame;
 
 namespace Core.VinceGame
@@ -12,8 +12,11 @@ namespace Core.VinceGame
     public class PowerUps : MonoBehaviour
     {
         [SerializeField] private GamePrototype gamePrototype;
-        [SerializeField] private TMP_Text[] specialUsedText;
+        [SerializeField] private TMP_Text specialUsedText;
         [SerializeField] private CanvasGroup[] specialsGroups;
+        [SerializeField] private Button shieldButton;
+        [SerializeField] private Button revealButton;
+        [SerializeField] private Button extraButton;
         
         private bool _redPowerupUsed;
         private bool _greenPowerupUsed;
@@ -30,6 +33,9 @@ namespace Core.VinceGame
         private void Start()
         {
             _gameManager = GameManager.Instance;
+            shieldButton.onClick.AddListener(ShieldSelectedPiece);
+            revealButton.onClick.AddListener(RevealBoard);
+            extraButton.onClick.AddListener(EnableExtraTurn);
         }
 
         public bool ProcessPowerup(string color)
@@ -100,6 +106,17 @@ namespace Core.VinceGame
 
             specialsGroups[index].alpha = targetAlpha;
         }
+
+        private void ShieldSelectedPiece()
+        {
+            if (_greenPowerupUsed) return;
+
+            gamePrototype.shieldSelectionMode = true;
+            _greenPowerupUsed = true;
+
+            _gameManager.TextAnimations.RainbowText("Shield used", specialUsedText);
+        }
+
         public void ShieldPieces(bool isOnline, GridData playerGrid)
         {
             if (_greenPowerupUsed) return;
@@ -123,22 +140,20 @@ namespace Core.VinceGame
             if (isOnline) gamePrototype.SendImmuneStatus(immuneSquares.Select(x => (byte)x).ToArray());
         }
         
-        public void ShieldOpponentPieces(GridData opponentGrid)
+        public void ShieldOpponentPieces(GridData opponentGrid, byte[] indexes)
         {
             if (_greenPowerupUsed) return;
             _gameManager.TextAnimations.RainbowText("Opponent used shield!!", specialUsedText);
             StartCoroutine(DeactivatePowerupUI(0));
             _greenPowerupUsed = true;
-            
-            for (int i = 0; i < opponentGrid.Marks.Length; i++)
+    
+            foreach (byte index in indexes)
             {
-                if (opponentGrid.Marks[i])
-                {
-                    Debug.Log("Shielding these indexes on opponent grid: " + i);
-                    opponentGrid.Immune[i] = true;
-                }
+                Debug.Log("Shielding index on opponent grid: " + index);
+                opponentGrid.Immune[index] = true;
             }
         }
+
         
         public void ResetGreenPowerUp(GridData playerGrid)
         {
@@ -150,9 +165,13 @@ namespace Core.VinceGame
                 }
                 _greenPowerupUsed = false;
 
-                specialUsedText[0].text = "";
-                specialUsedText[1].text = "";
+                specialUsedText.text = "";
             }
+        }
+        
+        public void OnShieldApplied()
+        {
+            StartCoroutine(DeactivatePowerupUI(0));
         }
         
         public void RevealBoard()

@@ -63,9 +63,37 @@ namespace Core.VinceGame
                 int randomPosition = availablePositions[Random.Range(0, availablePositions.Count)];
                 string[] colors = { ColorGreenSelect, ColorBlueSelect, ColorRedSelect };
                 string randomColor = colors[Random.Range(0, colors.Length)];
-                _gameRef.CurrentPaintColor = randomColor; // Plays a rando color
-                _gameRef.OnGridButtonClick(playerGridButtons[randomPosition]);
+                // Call ApplyMove directly instead of going through OnGridButtonClick
+                _gameRef.ApplyMove(randomPosition, randomColor);
             }
         }
+
+        public void ForceShieldSelection(GridData playerGrid, Button[] playerGridButtons)
+        {
+            List<int> markedPositions = new List<int>();
+            for (int i = 0; i < playerGrid.Marks.Length; i++)
+            {
+                // Only include positions that have the player's pieces
+                if (playerGrid.Marks[i] && !string.IsNullOrEmpty(playerGrid.Color[i]))
+                {
+                    markedPositions.Add(i);
+                }
+            }
+
+            if (markedPositions.Count > 0)
+            {
+                // Pick a random piece to shield
+                int randomPosition = markedPositions[Random.Range(0, markedPositions.Count)];
+                // Call ApplyShield directly instead of going through OnGridButtonClick
+                _gameRef.ApplyShield(randomPosition);
+            }
+            else
+            {
+                // If no pieces to shield, just cancel shield mode
+                _gameRef.shieldSelectionMode = false;
+            }
+        }
+
+
     }
 }

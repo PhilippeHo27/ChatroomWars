@@ -10,11 +10,11 @@ namespace Core.Utility
     {
         private bool _isWarningAnimationPlaying;
 
-        public void PopText(object textElement, string message, float scaleDuration = 0.2f, float scaleDownDuration = 0.1f, float scaleAmount = 1.2f)
+        public void PopText(object textElement, string message, float scaleDuration = 0.2f, float scaleDownDuration = 0.1f, float scaleAmount = 1.2f, bool clearAfterDelay = false, float clearDelay = 1.5f)
         {
             if (textElement == null)
                 return;
-        
+
             if (textElement is TMP_Text singleText)
             {
                 singleText.text = message;
@@ -24,6 +24,11 @@ namespace Core.Utility
                 sequence.Append(singleText.transform.DOScale(scaleAmount, scaleDuration))
                     .Append(singleText.transform.DOScale(1f, scaleDownDuration))
                     .SetEase(Ease.OutBack);
+        
+                if (clearAfterDelay)
+                {
+                    DOVirtual.DelayedCall(clearDelay, () => singleText.text = "");
+                }
             }
             else if (textElement is TMP_Text[] textArray)
             {
@@ -38,13 +43,16 @@ namespace Core.Utility
                         sequence.Append(txt.transform.DOScale(scaleAmount, scaleDuration))
                             .Append(txt.transform.DOScale(1f, scaleDownDuration))
                             .SetEase(Ease.OutBack);
+                
+                        if (clearAfterDelay)
+                        {
+                            DOVirtual.DelayedCall(clearDelay, () => txt.text = "");
+                        }
                     }
                 }
             }
         }
-
         
-        // Refactored to handle both single text and arrays with one function
         public void ShowFadingText(string message, object textElement, float fadeInDuration = 0.5f, float displayDuration = 1f, float fadeOutDuration = 0.5f)
         {
             if (textElement == null)
@@ -278,10 +286,9 @@ namespace Core.Utility
             rainbowSequence.Append(textElement.DOFade(0f, fadeOutDuration))
                            .AppendCallback(() => {
                                 textElement.color = originalColor;
-                                textElement.alpha = 1f; // Reset alpha for future use
+                                textElement.text = "";
                            });
         }
-
         
         private Sequence _blinkSequence;
 
@@ -322,7 +329,7 @@ namespace Core.Utility
                 _isWarningAnimationPlaying = true;
             }
         }
-
+        
         public void ResetTimerVisuals(Image timerFill)
         {
             DOTween.Kill(timerFill);
@@ -334,9 +341,13 @@ namespace Core.Utility
                 _blinkSequence = null;
             }
     
+            // Explicitly reset ALL properties to initial state
             timerFill.color = Color.white;
-            _isWarningAnimationPlaying = false; // Reset the boolean flag
+            timerFill.fillAmount = 1f;  // Reset fill amount
+            timerFill.DOFade(1f, 0f);   // Reset alpha immediately
+            _isWarningAnimationPlaying = false;
         }
+
 
     }
 }

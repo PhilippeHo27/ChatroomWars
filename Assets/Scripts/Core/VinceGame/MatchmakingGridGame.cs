@@ -111,7 +111,7 @@ namespace Core.VinceGame
             // Notify game of match found
             //OnMatchFound?.Invoke(roomId);
             
-            Debug.Log("Founddd match and we're in the room called " + roomId);
+            Debug.Log("Found match and we're in the room called " + roomId);
         }
 
         private void MatchmakingCancelled()
