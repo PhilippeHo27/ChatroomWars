@@ -69,6 +69,7 @@ namespace Core.WebSocket
                 { PacketType.MatchFound, ProcessMatchFound },
                 { PacketType.GameStartInfo , StartGameConfirmationFromServer },
                 { PacketType.VinceGamePacket, ProcessVinceGame },
+                { PacketType.ExtraTurnPacket, ProcessExtraTurnPacket },
                 { PacketType.VinceGameImmune, ProcessImmune }
             };
         }
@@ -279,6 +280,8 @@ namespace Core.WebSocket
             _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
         private void ProcessVinceGame(byte[] messagePackData) => 
             _vinceGame?.ReceiveMove(messagePackData);
+        private void ProcessExtraTurnPacket(byte[] messagePackData) => 
+            _vinceGame?.ReceiveMoves(messagePackData);
         private void ProcessImmune(byte[] messagePackData) => 
             _vinceGame?.UpdateClientImmunePieces(messagePackData);
         private void ProcessMatchFound(byte[] messagePackData) => 

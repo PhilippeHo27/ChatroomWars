@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Core.Singletons;
 using TMPro;
@@ -55,10 +56,6 @@ namespace Core.VinceGame
         [SerializeField] private TMP_Text opponentTurnText;
         [SerializeField] private TMP_Text currentRoundText;
         [SerializeField] private TMP_Text announcementText;
-        
-        // [SerializeField] private Button shieldButton;
-        // [SerializeField] private Button revealButton;
-        // [SerializeField] private Button extraButton;
 
         // End game Canvas
         [SerializeField] private Button replayButton;
@@ -93,6 +90,12 @@ namespace Core.VinceGame
         private int _totalTurns;
         private int _maxTurns;
         public bool shieldSelectionMode = false;
+        
+        // extra turns
+        
+        private List<int> _extraTurnMoves = new List<int>();
+        private List<string> _extraTurnColors = new List<string>();
+        private bool _isInExtraTurn = false;
 
 
         // Cursor
@@ -117,6 +120,7 @@ namespace Core.VinceGame
             testBlind = _gameManager.blindModeActive;
             isOnline = _gameManager.isOnline;
             _maxTurns = numberOfRounds * 2;
+            _currentRound = 1;
             
             numberOfRounds = _gameManager.numberOfRounds;
             _turnTimer = _gameManager.timer;
@@ -166,7 +170,7 @@ namespace Core.VinceGame
             
             countdownText.alpha = 1f;
             _turnTimer = timer;
-            _currentRound = 0;
+            _currentRound = 1;
             _totalTurns = 0;
             _maxTurns = numberOfRounds * 2;
             currentRoundText.text = $"Round: {_currentRound}";
@@ -506,10 +510,6 @@ namespace Core.VinceGame
             powerUps.OnShieldApplied();
         }
         
-
-        
-        
-        
         // public void OnGridButtonClick(Button clickedButton)
         // {
         //     int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
@@ -543,55 +543,121 @@ namespace Core.VinceGame
         // }
 
 
+        // private IEnumerator ProcessTurn(int buttonIndex, bool isLocalPlayerMove)
+        // {
+        //     string originalColor = _playerGrid.Color[buttonIndex];
+        //
+        //     // Handle conflict resolution based on whose turn it is
+        //     if ((isLocalPlayerMove && _opponentGrid.Marks[buttonIndex]) || (!isLocalPlayerMove && _playerGrid.Marks[buttonIndex]))
+        //     {
+        //         yield return StartCoroutine(ResolveConflict(buttonIndex));
+        //     }
+        //
+        //     if (isLocalPlayerMove && isOnline)
+        //     {
+        //         SendMove(buttonIndex, originalColor);
+        //     }
+        //
+        //     yield return StartCoroutine(CheckPatternsCoroutine());
+        //
+        //     // Check if player gets an extra turn via red power-up
+        //     bool extraTurn = powerUps.redPowerActivated && isLocalPlayerMove;
+        //     if (extraTurn)
+        //     {
+        //         Debug.Log("Extra turn applied!!");
+        //         powerUps.ResetRedPowerup();
+        //         powerUps.redPowerActivated = false;
+        //     }
+        //
+        //     if (!extraTurn)
+        //     {
+        //         SwapTurns();
+        //
+        //         // Trigger AI's turn if playing against AI and local player just moved
+        //         if (isLocalPlayerMove && playAgainstAI)
+        //         {
+        //             StartCoroutine(ArtificialOpponent());
+        //         }
+        //     }
+        // }
+        
         private IEnumerator ProcessTurn(int buttonIndex, bool isLocalPlayerMove)
         {
-            // Handle conflict resolution
             string originalColor = _playerGrid.Color[buttonIndex];
-
-            if (isLocalPlayerMove)
+            
+            // Handle conflict resolution based on whose turn it is
+            if ((isLocalPlayerMove && _opponentGrid.Marks[buttonIndex]) || (!isLocalPlayerMove && _playerGrid.Marks[buttonIndex]))
             {
-                if (_opponentGrid.Marks[buttonIndex])
-                {
-                    yield return StartCoroutine(ResolveConflict(buttonIndex));
-                }
-            }
-            else 
-            {
-                if (_playerGrid.Marks[buttonIndex])
-                {
-                    yield return StartCoroutine(ResolveConflict(buttonIndex));
-                }
-            }
-
-            // Check for patterns todo this can be moved  into islocal player move im pretty sure
-            yield return StartCoroutine(CheckPatternsCoroutine());
-
-            if (powerUps.redPowerActivated && isLocalPlayerMove)
-            {
-                Debug.Log("Extra turn applied!!");
-                powerUps.ResetRedPowerup();
-                powerUps.redPowerActivated = false;
-                yield break; 
+                yield return StartCoroutine(ResolveConflict(buttonIndex));
             }
             
+            // Track moves for potential extra turn
             if (isLocalPlayerMove)
             {
-                SwapTurns();
-        
-                if (playAgainstAI)
+                if (_isInExtraTurn)
                 {
-                    StartCoroutine(ArtificialOpponent());
+                    // Add second move to our tracking lists
+                    _extraTurnMoves.Add(buttonIndex);
+                    _extraTurnColors.Add(originalColor);
                 }
-                else if (isOnline)
+                else
                 {
-                    SendMove(buttonIndex, originalColor);
+                    // Initialize tracking for first move
+                    _extraTurnMoves.Clear();
+                    _extraTurnColors.Clear();
+                    _extraTurnMoves.Add(buttonIndex);
+                    _extraTurnColors.Add(originalColor);
                 }
+            }
+            
+            yield return StartCoroutine(CheckPatternsCoroutine());
+            
+            // Check if player gets an extra turn via red power-up
+            bool extraTurn = powerUps.redPowerActivated && isLocalPlayerMove;
+            
+            if (extraTurn)
+            {
+                powerUps.ResetRedPowerup();
+                powerUps.redPowerActivated = false;
+                _isInExtraTurn = true;
             }
             else
             {
+                if (isLocalPlayerMove && isOnline)
+                {
+                    if (_isInExtraTurn)
+                    {
+                        SendMoves(_extraTurnMoves, _extraTurnColors);
+                        _isInExtraTurn = false; 
+                    }
+                    else
+                    {
+                        SendMove(buttonIndex, originalColor);
+                    }
+                }
+                
                 SwapTurns();
+                
+                if (isLocalPlayerMove && playAgainstAI)
+                {
+                    StartCoroutine(ArtificialOpponent());
+                }
             }
         }
+        
+        private void ResolveReceivedMove(int position, string opponentColor)
+        {
+            _opponentGrid.Marks[position] = true;
+            _opponentGrid.Color[position] = opponentColor;
+            otherBoard[position].color = GetColorFromHex(opponentColor);
+
+            if (_playerGrid.Marks[position])
+            {
+                StartCoroutine(ResolveConflict(position));
+            }
+        }
+
+
         private IEnumerator ResolveConflict(int position)
         {
             string player1Color = _playerGrid.Color[position];
@@ -876,23 +942,67 @@ namespace Core.VinceGame
                 Index = (byte)index,
                 SquareColor = colorBeforeResolution
             };
-            Debug.Log(createData.Index + " " + createData.SquareColor);
             
             WebSocketNetworkHandler.Instance.SendWebSocketPackage(createData);
         }
+        
+        private void SendMoves(List<int> indices, List<string> colors)
+        {
+            byte[] indicesArray = new byte[indices.Count];
+            for (int i = 0; i < indices.Count; i++)
+            {
+                indicesArray[i] = (byte)indices[i];
+            }
+    
+            var createData = new ExtraTurnPacket
+            {
+                Type = PacketType.ExtraTurnPacket,
+                Indices = indicesArray,
+                Colors = colors.ToArray()
+            };
+    
+            WebSocketNetworkHandler.Instance.SendWebSocketPackage(createData);
+        }
+
+        // public void ReceiveMove(byte[] messagePackData)
+        // {
+        //     var receivedData = MessagePackSerializer.Deserialize<VinceGameData>(messagePackData);
+        //     if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
+        //     {
+        //         int index = receivedData.Index;
+        //         _opponentGrid.Marks[index] = true;
+        //         _opponentGrid.Color[index] = receivedData.SquareColor;
+        //         otherBoard[index].color = GetColorFromHex(receivedData.SquareColor);
+        //     
+        //         StartCoroutine(ProcessTurn(index, false));
+        //     }
+        // }
+        
         public void ReceiveMove(byte[] messagePackData)
         {
             var receivedData = MessagePackSerializer.Deserialize<VinceGameData>(messagePackData);
             if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
             {
                 int index = receivedData.Index;
-                _opponentGrid.Marks[index] = true;
-                _opponentGrid.Color[index] = receivedData.SquareColor;
-                otherBoard[index].color = GetColorFromHex(receivedData.SquareColor);
-            
-                StartCoroutine(ProcessTurn(index, false));
+                ResolveReceivedMove(index, receivedData.SquareColor);
+                SwapTurns();
             }
         }
+
+        public void ReceiveMoves(byte[] messagePackData)
+        {
+            var receivedData = MessagePackSerializer.Deserialize<ExtraTurnPacket>(messagePackData);
+            if (receivedData.SenderId != WebSocketNetworkHandler.Instance.ClientId)
+            {
+                for (int i = 0; i < receivedData.Indices.Length; i++)
+                {
+                    ResolveReceivedMove(receivedData.Indices[i], receivedData.Colors[i]);
+                }
+                SwapTurns();
+            }
+        }
+
+
         public void SendImmuneStatus(byte[] indexes)
         {
             var immunePacket = new GridGameIndices 
@@ -908,7 +1018,6 @@ namespace Core.VinceGame
             // Convert single index to array with one element
             SendImmuneStatus(new byte[] { index });
         }
-
 
         public void UpdateClientImmunePieces(byte[] messagePackData)
         {

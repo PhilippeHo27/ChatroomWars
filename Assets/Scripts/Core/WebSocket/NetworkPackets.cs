@@ -26,7 +26,8 @@ namespace Core.WebSocket
     
         // New packet types for the ready system:
         GameStartInfo  = 15,
-        OpponentDisconnected = 17
+        OpponentDisconnected = 17,
+        ExtraTurnPacket = 18
     }
     
     [MessagePackObject]
@@ -102,6 +103,17 @@ namespace Core.WebSocket
         [Key(3)]
         public string SquareColor { get; set; } // string for now but it can easily be bytes later
     }
+    
+    [MessagePackObject]
+    public class ExtraTurnPacket  : BaseNetworkPacket
+    {
+        [Key(2)]
+        public byte[] Indices { get; set; } // Array of positions that were played
+    
+        [Key(3)]
+        public string[] Colors { get; set; } // Corresponding colors for each position
+    }
+    
     [MessagePackObject]
     public class GridGameIndices : BaseNetworkPacket
     {

@@ -71,7 +71,7 @@ namespace Core.WebSocket
             // Start timeout monitoring
             _timeoutCoroutine = _networkHandler.StartCoroutine(MatchmakingTimeoutCoroutine());
             
-            Debug.Log("Started matchmaking search");
+            //Debug.Log("Started matchmaking search");
         }
         
         public void CancelMatchmaking()

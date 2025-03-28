@@ -5,8 +5,8 @@ namespace Core.Utility
     public class ResolutionHandler
     {
         private readonly float _mobileZoomFactor = 1.6f;
-        private readonly int _defaultWidth = 1920;
-        private readonly int _defaultHeight = 1080;
+        //private readonly int _defaultWidth = 1920;
+        //private readonly int _defaultHeight = 1080;
         
         public ResolutionHandler() { }
         
@@ -15,36 +15,33 @@ namespace Core.Utility
             _mobileZoomFactor = customMobileZoomFactor;
         }
         
-        public void AdjustResolution()
-        {
-            
-            Screen.SetResolution(33, 88, Screen.fullScreen);
-
-            
-            // if (true)
-            // {
-            //     ApplyMobileZoom();
-            //     Debug.Log($"Mobile browser detected. Applied zoom factor: {_mobileZoomFactor}");
-            // }
-            // else
-            // {
-            //     Screen.SetResolution(_defaultWidth, _defaultHeight, Screen.fullScreen);
-            // }
-        }
-        
-        private void ApplyMobileZoom()
-        {
-            int zoomedWidth = Mathf.RoundToInt(_defaultWidth / _mobileZoomFactor);
-            Screen.SetResolution(zoomedWidth, _defaultHeight, Screen.fullScreen);
-        }
-
-        
-        private bool IsMobileBrowser()
-        {
-            bool isWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
-            if (!isWebGL) return false;
-            
-            return Input.touchSupported;
-        }
+        // public void AdjustResolution()
+        // {
+        //     if (IsMobileBrowser())
+        //     {
+        //         ApplyMobileZoom();
+        //         Debug.Log($"Mobile browser detected. Applied zoom factor: {_mobileZoomFactor}");
+        //     }
+        //     else
+        //     {
+        //         Screen.SetResolution(_defaultWidth, _defaultHeight, Screen.fullScreen);
+        //     }
+        // }
+        //
+        // private void ApplyMobileZoom()
+        // {
+        //     int zoomedWidth = Mathf.RoundToInt(_defaultWidth / _mobileZoomFactor);
+        //     int zoomedHeight = Mathf.RoundToInt(_defaultHeight / _mobileZoomFactor);
+        //     
+        //     Screen.SetResolution(zoomedWidth, zoomedHeight, Screen.fullScreen);
+        // }
+        //
+        // private bool IsMobileBrowser()
+        // {
+        //     bool isWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
+        //     if (!isWebGL) return false;
+        //     
+        //     return Input.touchSupported;
+        // }
     }
 }

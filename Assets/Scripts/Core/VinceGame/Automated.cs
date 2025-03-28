@@ -63,7 +63,7 @@ namespace Core.VinceGame
                 int randomPosition = availablePositions[Random.Range(0, availablePositions.Count)];
                 string[] colors = { ColorGreenSelect, ColorBlueSelect, ColorRedSelect };
                 string randomColor = colors[Random.Range(0, colors.Length)];
-                // Call ApplyMove directly instead of going through OnGridButtonClick
+
                 _gameRef.ApplyMove(randomPosition, randomColor);
             }
         }
