@@ -12,6 +12,7 @@ namespace Core.VinceGame
     public class PowerUps : MonoBehaviour
     {
         [SerializeField] private GamePrototype gamePrototype;
+        [SerializeField] private GameGUI gameGUI;
         [SerializeField] private TMP_Text specialUsedText;
         [SerializeField] private CanvasGroup[] specialsGroups;
         [SerializeField] private Button shieldButton;
@@ -180,7 +181,8 @@ namespace Core.VinceGame
             
             _gameManager.TextAnimations.RainbowText("Reveal board used", specialUsedText);
             StartCoroutine(DeactivatePowerupUI(1));
-            gamePrototype.SetSideBySideView(true);
+            //gamePrototype.SetSideBySideView(true);
+            gameGUI.SetSideBySideView(true);
             _bluePowerupUsed = true;
         }
         
@@ -188,7 +190,8 @@ namespace Core.VinceGame
         {
             if (_bluePowerupUsed)
             {
-                gamePrototype.SetCenteredView(true);
+                //gamePrototype.SetCenteredView(true);
+                gameGUI.SetCenteredView(true);
                 _bluePowerupUsed = false;
             }
         }

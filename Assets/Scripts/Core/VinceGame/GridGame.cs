@@ -18,6 +18,19 @@ namespace Core.VinceGame
             EndGame
         }
         
+        public enum TextType
+        {
+            PlayerName,
+            PlayerTurn,
+            OpponentTurn,
+            CurrentRound,
+            Announcement,
+            GameOver,
+            PlayerScore,
+            OpponentScore,
+            PlayAgain,
+            Countdown
+        }
         
         public const string ColorGreenSelect = "#A6E22E";
         public const string ColorBlueSelect = "#4591DB";

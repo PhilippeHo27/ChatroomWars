@@ -1024,7 +1024,7 @@ MonoBehaviour:
   blindModeActive: 0
   isOnline: 0
   numberOfRounds: 6
-  timer: 10
+  timer: 1
 --- !u!1 &391945928
 GameObject:
   m_ObjectHideFlags: 0

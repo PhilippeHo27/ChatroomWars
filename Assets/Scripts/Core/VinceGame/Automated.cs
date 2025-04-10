@@ -47,7 +47,7 @@ namespace Core.VinceGame
             return -1;
         }
         
-        public void ForcePlayerMove(GridData playerGrid, Button[] playerGridButtons)
+        public void ForcePlayerMove(GridData playerGrid)
         {
             List<int> availablePositions = new List<int>();
             for (int i = 0; i < playerGrid.Marks.Length; i++)
@@ -68,7 +68,7 @@ namespace Core.VinceGame
             }
         }
 
-        public void ForceShieldSelection(GridData playerGrid, Button[] playerGridButtons)
+        public void ForceShieldSelection(GridData playerGrid)
         {
             List<int> markedPositions = new List<int>();
             for (int i = 0; i < playerGrid.Marks.Length; i++)
