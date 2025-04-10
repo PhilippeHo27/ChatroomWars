@@ -138,7 +138,8 @@ namespace Core.VinceGame
                 }
             }
     
-            if (isOnline) gamePrototype.SendImmuneStatus(immuneSquares.Select(x => (byte)x).ToArray());
+            //if (isOnline) gamePrototype.SendImmuneStatus(immuneSquares.Select(x => (byte)x).ToArray());
+            if (isOnline) gamePrototype.NetworkHandler.SendImmuneStatus(immuneSquares.Select(x => (byte)x).ToArray());
         }
         
         public void ShieldOpponentPieces(GridData opponentGrid, byte[] indexes)

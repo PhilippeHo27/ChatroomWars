@@ -279,14 +279,13 @@ namespace Core.WebSocket
         private void ProcessPosition(byte[] messagePackData) =>
             _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
         private void ProcessVinceGame(byte[] messagePackData) => 
-            _vinceGame?.ReceiveMove(messagePackData);
+            _vinceGame?.NetworkHandler.ReceiveMove(messagePackData);
         private void ProcessExtraTurnPacket(byte[] messagePackData) => 
-            _vinceGame?.ReceiveMoves(messagePackData);
+            _vinceGame?.NetworkHandler.ReceiveMoves(messagePackData);
         private void ProcessImmune(byte[] messagePackData) => 
-            _vinceGame?.UpdateClientImmunePieces(messagePackData);
+            _vinceGame?.NetworkHandler.UpdateClientImmunePieces(messagePackData);
         private void ProcessMatchFound(byte[] messagePackData) => 
             _matchmaking?.HandleMatchFoundPacket(messagePackData);
-
         private void HandleIdAssign(byte[] data)
         {
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
