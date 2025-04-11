@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Core.VinceGame;
+using Core.Hidden;
 using NativeWebSocket;
 using Debug = UnityEngine.Debug;
 using MessagePack;
@@ -31,8 +31,8 @@ namespace Core.WebSocket
         private MovementHandler _movementHandler;
         public MovementHandler MovementHandler { get => _movementHandler; set => _movementHandler = value; }
         
-        private GamePrototype _vinceGame;
-        public GamePrototype VinceGame { get => _vinceGame; set => _vinceGame = value; }
+        private HiddenMain _hiddenGame;
+        public HiddenMain HiddenGame { get => _hiddenGame; set => _hiddenGame = value; }
 
         // ## Message Processing
         private readonly Queue<Action> _actions = new Queue<Action>();
@@ -68,9 +68,9 @@ namespace Core.WebSocket
                 { PacketType.UserInfo, HandleUserInfo },
                 { PacketType.MatchFound, ProcessMatchFound },
                 { PacketType.GameStartInfo , StartGameConfirmationFromServer },
-                { PacketType.VinceGamePacket, ProcessVinceGame },
+                { PacketType.HiddenGamePacket, ProcessHiddenGame },
                 { PacketType.ExtraTurnPacket, ProcessExtraTurnPacket },
-                { PacketType.VinceGameImmune, ProcessImmune }
+                { PacketType.HiddenGameImmune, ProcessImmune }
             };
         }
         
@@ -278,12 +278,12 @@ namespace Core.WebSocket
             _chatHandler?.ProcessIncomingChatData(messagePackData);
         private void ProcessPosition(byte[] messagePackData) =>
             _movementHandler?.ProcessRemotePositionUpdate(messagePackData);
-        private void ProcessVinceGame(byte[] messagePackData) => 
-            _vinceGame?.NetworkHandler.ReceiveMove(messagePackData);
+        private void ProcessHiddenGame(byte[] messagePackData) => 
+            _hiddenGame?.NetworkHandler.ReceiveMove(messagePackData);
         private void ProcessExtraTurnPacket(byte[] messagePackData) => 
-            _vinceGame?.NetworkHandler.ReceiveMoves(messagePackData);
+            _hiddenGame?.NetworkHandler.ReceiveMoves(messagePackData);
         private void ProcessImmune(byte[] messagePackData) => 
-            _vinceGame?.NetworkHandler.UpdateClientImmunePieces(messagePackData);
+            _hiddenGame?.NetworkHandler.UpdateClientImmunePieces(messagePackData);
         private void ProcessMatchFound(byte[] messagePackData) => 
             _matchmaking?.HandleMatchFoundPacket(messagePackData);
         private void HandleIdAssign(byte[] data)

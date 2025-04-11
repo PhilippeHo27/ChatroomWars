@@ -17,7 +17,7 @@ namespace Core.WebSocket
         private Coroutine _timeoutCoroutine;
         
         // State
-        private bool _isSearching = false;
+        private bool _isSearching;
         public bool IsSearching => _isSearching;
         
         // Configuration
@@ -48,8 +48,6 @@ namespace Core.WebSocket
             string roomId = roomAction.RoomId;
             
             Debug.Log($"Match found! Room ID: {roomId}");
-            
-            // Notify listeners
             OnMatchFound?.Invoke(roomId);
         }
         
@@ -59,19 +57,16 @@ namespace Core.WebSocket
             
             _isSearching = true;
             
-            // Send matchmaking request
             var matchRequest = new BooleanPacket
             {
                 Type = PacketType.MatchmakingRequest,
-                Response = true  // true = start searching
+                Response = true
             };
             
             _networkHandler.SendWebSocketPackage(matchRequest);
             
             // Start timeout monitoring
             _timeoutCoroutine = _networkHandler.StartCoroutine(MatchmakingTimeoutCoroutine());
-            
-            //Debug.Log("Started matchmaking search");
         }
         
         public void CancelMatchmaking()
@@ -80,11 +75,10 @@ namespace Core.WebSocket
             
             _isSearching = false;
             
-            // Send cancel request
             var cancelRequest = new BooleanPacket
             {
                 Type = PacketType.MatchmakingRequest,
-                Response = false  // false = stop searching
+                Response = false
             };
             
             _networkHandler.SendWebSocketPackage(cancelRequest);
@@ -107,8 +101,6 @@ namespace Core.WebSocket
             {
                 // Auto-cancel if it's taking too long
                 _isSearching = false;
-                
-                // Send cancel request to server
                 var cancelRequest = new BooleanPacket
                 {
                     Type = PacketType.MatchmakingRequest,
@@ -117,12 +109,8 @@ namespace Core.WebSocket
                 _networkHandler.SendWebSocketPackage(cancelRequest);
                 
                 Debug.Log("Matchmaking search timed out");
-                
-                // Notify listeners
-                //OnSearchTimeout?.Invoke();
                 OnSearchCancelled?.Invoke();
             }
-            
             _timeoutCoroutine = null;
         }
     }

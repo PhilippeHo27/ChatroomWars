@@ -23,6 +23,7 @@ namespace Core
         [SerializeField] private TMP_Text usernameText;
         [SerializeField] private TMP_Text errorText;
         [SerializeField] private Button confirmNameButton;
+        [SerializeField] private Button randomizeNameButton;
         [SerializeField] private Button websocketChatButton;
         [SerializeField] private Button pongGameButton;
         [SerializeField] private Button vinceGameButton;
@@ -59,10 +60,11 @@ namespace Core
             offlineButton.onClick.AddListener(ShowOfflineScreen);
             backButton.onClick.AddListener(HandleBackButton);
             confirmNameButton.onClick.AddListener(HandleConfirmName);
+            randomizeNameButton.onClick.AddListener(RandomizeName);
             
             websocketChatButton.onClick.AddListener(() => ConnectToWebsocket("ChatRoom"));
             pongGameButton.onClick.AddListener(() => ConnectToWebsocket("Pong"));
-            vinceGameButton.onClick.AddListener(() => ConnectToWebsocket("VinceGame"));
+            vinceGameButton.onClick.AddListener(() => ConnectToWebsocket("HiddenGame"));
             offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
             offlineVinceGame.onClick.AddListener(LoadVinceOfflineGame);
             
@@ -89,6 +91,7 @@ namespace Core
             userInputField.text = _savedUsername;
             userInputField.gameObject.SetActive(true);
             confirmNameButton.gameObject.SetActive(true);
+            randomizeNameButton.gameObject.SetActive(true);
             usernameText.gameObject.SetActive(true);
             
             // Hide game options until name is confirmed
@@ -113,7 +116,8 @@ namespace Core
             
             userInputField.gameObject.SetActive(true);
             confirmNameButton.gameObject.SetActive(true);
-    
+            randomizeNameButton.gameObject.SetActive(true);
+            
             websocketChatButton.gameObject.SetActive(false);
             pongGameButton.gameObject.SetActive(false);
             vinceGameButton.gameObject.SetActive(false);
@@ -133,6 +137,8 @@ namespace Core
                 // Hide name input section
                 confirmNameButton.gameObject.SetActive(false);
                 userInputField.gameObject.SetActive(false);
+                randomizeNameButton.gameObject.SetActive(false);
+
                 
                 // Show game options
                 usernameText.text = $"Username: {newUsername}";
@@ -145,7 +151,29 @@ namespace Core
                 GameManager.Instance.TextAnimations.PopText(errorText, "Please enter a username!");
             }
         }
-        
+
+        private void RandomizeName()
+        {
+            string[] names = new string[]
+            {
+                "Apex", "Blaze", "Cipher", "Dusk", "Echo", 
+                "Frost", "Ghost", "Havoc", "Inferno", "Jolt",
+                "Krypto", "Luna", "Mist", "Neon", "Onyx",
+                "Pulse", "Quake", "Rogue", "Shadow", "Titan",
+                "Umbra", "Vortex", "Wraith", "Xenon", "Yeti",
+                "Zephyr", "Astro", "Bolt", "Comet", "Drift",
+                "Ember", "Flare", "Glitch", "Hex", "Iris",
+                "Jinx", "Karma", "Lyric", "Myth", "Nova",
+                "Orion", "Phoenix", "Quantum", "Razor", "Spark",
+                "Tempest", "Ultra", "Venom", "Warp", "Zero"
+            };
+
+            string randomName = names[Random.Range(0, names.Length)];
+    
+            userInputField.text = randomName;
+            usernameText.text = $"Username: {randomName}";
+        }
+
         private void SetCanvasGroupActive(CanvasGroup group, bool active)
         {
             group.alpha = active ? 1 : 0;
@@ -156,7 +184,7 @@ namespace Core
         private void ConnectToWebsocket(string sceneName)
         {
             GameManager.Instance.isOnline = true;
-            GameManager.Instance.blindModeActive = false;
+            GameManager.Instance.blindModeActive = true;
             GameManager.Instance.playingAgainstAI = false;
             WebSocketNetworkHandler.Instance.Connect();
             StartCoroutine(ConnectWithRetries(sceneName, 3));
@@ -244,14 +272,12 @@ namespace Core
             }
         }
 
-
-
         private void LoadVinceOfflineGame()
         {
             GameManager.Instance.playingAgainstAI = true;
             GameManager.Instance.isOnline = false;
             GameManager.Instance.blindModeActive = offlineBlindToggle.isOn;
-            SceneLoader.Instance.LoadScene("VinceGame");
+            SceneLoader.Instance.LoadScene("HiddenGame");
         }
         
         private void OnParameterChanged(string value, int index)
@@ -284,6 +310,7 @@ namespace Core
             offlineVinceGame.onClick.RemoveAllListeners();
             backButton.onClick.RemoveAllListeners();
             confirmNameButton.onClick.RemoveAllListeners();
+            randomizeNameButton.onClick.RemoveAllListeners();
             userInputField.onValueChanged.RemoveAllListeners();
             userInputField.onSubmit.RemoveAllListeners();
         }

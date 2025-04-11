@@ -14,14 +14,13 @@ namespace Core.Singletons
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
-        
 
         public void LoadScene(string sceneName)
         {
             StartCoroutine(LoadSceneAsync(sceneName));
         }
 
-        public IEnumerator LoadSceneAsync(string sceneName)
+        private IEnumerator LoadSceneAsync(string sceneName)
         {
             transition.SetTrigger("Start");
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);

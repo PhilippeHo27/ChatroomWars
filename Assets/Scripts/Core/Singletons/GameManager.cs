@@ -6,9 +6,9 @@ namespace Core.Singletons
     public class GameManager : IndestructibleSingletonBehaviour<GameManager>
     {
         [HideInInspector]
-        public bool playingAgainstAI = true;
+        public bool playingAgainstAI;
         [HideInInspector]
-        public bool blindModeActive = true;
+        public bool blindModeActive;
         [HideInInspector]
         public bool isOnline = false;
         public int  numberOfRounds = 6;

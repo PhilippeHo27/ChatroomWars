@@ -347,7 +347,57 @@ namespace Core.Utility
             timerFill.DOFade(1f, 0f);   // Reset alpha immediately
             _isWarningAnimationPlaying = false;
         }
+        
+        public void ShieldBouncyAppearance(Transform target)
+        {
+            if (target == null)
+                return;
 
+            DOTween.Kill(target);
+            target.localScale = Vector3.zero;
 
+            // Create the bouncy animation sequence
+            Sequence sequence = DOTween.Sequence();
+
+            // Step 1: Quickly scale up beyond normal size
+            sequence.Append(target.DOScale(1.3f, 0.2f).SetEase(Ease.OutQuad));
+
+            // Step 2: Bounce back smaller (the "boink" effect)
+            sequence.Append(target.DOScale(0.8f, 0.1f).SetEase(Ease.InQuad));
+
+            // Step 3: Return to normal size with a slight bounce
+            sequence.Append(target.DOScale(1.1f, 0.1f).SetEase(Ease.OutQuad));
+
+            // Step 4: Final settle to exactly normal size
+            sequence.Append(target.DOScale(1f, 0.1f).SetEase(Ease.InOutQuad));
+        }
+        
+        // Add to your DoTweenSimpleAnimations class
+        public void ShieldBouncyDisappearance(Transform target)
+        {
+            if (target == null)
+                return;
+
+            DOTween.Kill(target);
+    
+            // Create disappear animation sequence
+            Sequence sequence = DOTween.Sequence();
+    
+            // Step 1: Quick pop before disappearing
+            sequence.Append(target.DOScale(1.2f, 0.1f).SetEase(Ease.OutQuad));
+    
+            // Step 2: Shrink to nothing
+            sequence.Append(target.DOScale(0f, 0.2f).SetEase(Ease.InQuad));
+    
+            // After animation completes, deactivate the object
+            sequence.OnComplete(() => {
+                if (target != null && target.gameObject != null)
+                    target.gameObject.SetActive(false);
+            });
+    
+            // Play the animation
+            sequence.Play();
+        }
+        
     }
 }

@@ -18,7 +18,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Pong.unity
     guid: ec7a6321cacbc5048b6037f68bcf65bd
   - enabled: 1
-    path: Assets/Scenes/VinceGame.unity
+    path: Assets/Scenes/HiddenGame.unity
     guid: 6512626911426e743a95e8bd02f1a1f3
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

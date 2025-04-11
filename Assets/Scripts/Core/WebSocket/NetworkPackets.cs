@@ -18,9 +18,9 @@ namespace Core.WebSocket
         ServerResponse = 8,
         UserInfo = 9,
     
-        VinceGamePacket = 10,
-        VinceGameImmune = 11,
-        VinceGameConfirmStart = 12,
+        HiddenGamePacket = 10,
+        HiddenGameImmune = 11,
+        HiddenGameConfirmStart = 12,
         MatchmakingRequest = 13,
         MatchFound = 14,
     
@@ -95,27 +95,27 @@ namespace Core.WebSocket
     }
 
     [MessagePackObject]
-    public class VinceGameData : BaseNetworkPacket
+    public class HiddenGameData : BaseNetworkPacket
     {
         [Key(2)] 
         public byte Index; // 0 to 9 which case was selected?
         
         [Key(3)]
-        public string SquareColor { get; set; } // string for now but it can easily be bytes later
+        public string SquareColor { get; set; }
     }
     
     [MessagePackObject]
     public class ExtraTurnPacket  : BaseNetworkPacket
     {
         [Key(2)]
-        public byte[] Indices { get; set; } // Array of positions that were played
+        public byte[] Indices { get; set; }
     
         [Key(3)]
-        public string[] Colors { get; set; } // Corresponding colors for each position
+        public string[] Colors { get; set; }
     }
     
     [MessagePackObject]
-    public class GridGameIndices : BaseNetworkPacket
+    public class HiddenGameIndices : BaseNetworkPacket
     {
         [Key(2)] 
         public byte[] Index;
