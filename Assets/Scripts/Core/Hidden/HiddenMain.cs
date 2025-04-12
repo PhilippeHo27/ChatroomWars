@@ -74,6 +74,7 @@ namespace Core.Hidden
         private void Awake()
         {
             _gameManager = GameManager.Instance;
+            _gameManager.VFX.InitializePool();
             _wsHandler = WebSocketNetworkHandler.Instance;
             _wsHandler.HiddenGame = this;
 
@@ -283,24 +284,28 @@ namespace Core.Hidden
             string originalColor = _playerGrid.Color[buttonIndex];
             yield return ProcessMoveConflicts(buttonIndex, isLocalPlayerMove);
             TrackMoveForExtraTurn(buttonIndex, originalColor, isLocalPlayerMove);
-            
+    
             // Step 2: Check for patterns and special effects
             yield return StartCoroutine(CheckPatternsCoroutine());
-            
+    
             // Step 3: Handle turn transition
             bool extraTurn = HandleExtraTurnPowerUp(isLocalPlayerMove);
-            
-            if (!extraTurn)
+    
+            if (extraTurn)
+            {
+                HandleExtraTurnSpecifically();
+            }
+            else
             {
                 SendNetworkMoves(buttonIndex, originalColor, isLocalPlayerMove);
                 IncrementTurnCounter();
-                
+        
                 if (IsGameOver())
                 {
                     EndGame();
                     yield break;
                 }
-                
+        
                 CleanupBeforeTurnChange();
                 ChangeTurn();
                 TriggerAIIfNeeded(isLocalPlayerMove);
@@ -331,6 +336,25 @@ namespace Core.Hidden
                 _extraTurnColors.Clear();
                 _extraTurnMoves.Add(buttonIndex);
                 _extraTurnColors.Add(color);
+            }
+        }
+        
+        private void HandleExtraTurnSpecifically()
+        {
+            // Reset timer
+            if (_timerCoroutine != null)
+            {
+                StopCoroutine(_timerCoroutine);
+            }
+            _timerCoroutine = StartCoroutine(TimerCoroutine());
+    
+            // Visual feedback
+            _gameManager.TextAnimations.PopText(gameGUI.GetText(TMPTextType.Announcement), "Extra turn!", 0.15f, 0.1f, 1.15f);
+    
+            // If needed, trigger AI for an AI extra turn
+            if (_playAgainstAI && !_isMyTurn)
+            {
+                StartCoroutine(ArtificialOpponent());
             }
         }
 
@@ -465,14 +489,27 @@ namespace Core.Hidden
 
         private IEnumerator AnimatePieceClearing(int position, bool clearPlayer1, bool clearPlayer2)
         {
-            float duration = 1f;
+            // Determine which transform to use for the VFX
+            Transform effectTransform = clearPlayer1 ? gridButtonImages[position].transform : otherBoard[position].transform;
+
+            // Play the effect only if it's not clearPlayer2
+            if (!clearPlayer2)
+            {
+                GameManager.Instance.VFX.PlayEffectAt(effectTransform, 1, 1.5f);
+            }
+    
+            // Small delay
+            yield return new WaitForSeconds(0.1f);
+    
+            // Continue with the original color lerping animation
+            float duration = 0.2f;
             float elapsedTime = 0f;
-            
+    
             // Get initial colors
             Color startColor1 = gridButtonImages[position].color;
             Color startColor2 = otherBoard[position].color;
             Color targetColor = Color.white;
-            
+    
             // Animate fading to white
             while (elapsedTime < duration)
             {
@@ -485,6 +522,7 @@ namespace Core.Hidden
                 yield return null;
             }
         }
+
 
 
         private (bool shouldClearPlayer1, bool shouldClearPlayer2) ResolvingComparison(string player1Color, string player2Color)
@@ -516,6 +554,7 @@ namespace Core.Hidden
                 gridButtonImages[position].color = whiteColor;
                 _playerGrid.Marks[position] = false;
                 _playerGrid.Color[position] = "";
+                Debug.Log($"ClearSquare: Playing effect at position {position} on player grid");
             }
             else
             {
@@ -524,6 +563,7 @@ namespace Core.Hidden
                 _opponentGrid.Color[position] = "";
             }
         }
+
         private IEnumerator CheckPatternsCoroutine()
         {
             // We always check the active player's grid

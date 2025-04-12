@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: JMO VFX Ambient
+  m_EditorClassIdentifier: Assembly-CSharp:Core.Utility:VFXPrefabContainer
+  prefabs:
+  - {fileID: 7305185502956871417, guid: 85b062a5517cf8345bb6784ffbed4877, type: 3}
+  - {fileID: 4364354964670000192, guid: 3801a320e9ae1bf44a14efa194c86c3f, type: 3}
+  - {fileID: 6077168872989578693, guid: f514474ff8e94554d8477de1f2f601b0, type: 3}
