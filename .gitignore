@@ -76,3 +76,9 @@ crashlytics-build.properties
 
 # Photoshop files for keyboard/mouse
 /Assets/JohnFarmer/Keyboard Keys & Mouse Sprites/PSB File/
+
+# JetBrains Rider
+.idea/
+.idea
+*.sln.iml
+Assets/Plugins/Editor/JetBrains*
