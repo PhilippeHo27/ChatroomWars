@@ -24,6 +24,7 @@ namespace Core.Hidden
         [SerializeField] private Image[] gridButtonImages = new Image[9];
         [SerializeField] private Image[] otherBoard = new Image[9];
         
+        [SerializeField] private Button readyButtonAI;
         [SerializeField] private Button readyButton;
         [SerializeField] private Button replayButton;
 
@@ -54,7 +55,8 @@ namespace Core.Hidden
         private int _currentRound;
         private int _totalTurns;
         private int _maxTurns;
-        public bool shieldSelectionMode;
+        private bool _shieldSelectionMode;
+        public bool ShieldSelectionMode { get => _shieldSelectionMode; set => _shieldSelectionMode = value; }
         private bool _isMyTurn = true;
         public bool IsMyTurn => _isMyTurn;
         
@@ -84,6 +86,7 @@ namespace Core.Hidden
 
         private void Start()
         {
+            gameGUI.wtfisgoingon();
             _playAgainstAI = _gameManager.playingAgainstAI;
             _isOnline = _gameManager.isOnline;
             _numberOfRounds = _gameManager.numberOfRounds;
@@ -91,9 +94,10 @@ namespace Core.Hidden
             InitializeGameState();
             InitButtons();
             
-            _gameState = gameGUI.StateChange(_playAgainstAI ? GameState.Battle : GameState.Setup, false);
+            _gameState = gameGUI.StateChange(_playAgainstAI ? GameState.SetupAI : GameState.Setup, false);
             
-            if (_playAgainstAI) StartGameAI();
+            //if (_playAgainstAI) StartGameAI();
+            //if (_playAgainstAI) gameGUI.ToggleOfflineCanvas(true);
         }
         
         private void InitializeGameState()
@@ -121,6 +125,9 @@ namespace Core.Hidden
 
         private void StartGameAI()
         {
+            readyButtonAI.gameObject.SetActive(false);
+            gameGUI.ToggleOfflineCanvas(false);
+            _gameState = gameGUI.StateChange(GameState.Battle);
             _isMyTurn = true;
             _timerCoroutine = StartCoroutine(TimerCoroutine());
         }
@@ -176,6 +183,7 @@ namespace Core.Hidden
 
         private void InitButtons()
         {
+            readyButtonAI.onClick.AddListener(StartGameAI);
             readyButton.onClick.AddListener(Ready);
             replayButton.onClick.AddListener(ResetGame);
 
@@ -225,7 +233,7 @@ namespace Core.Hidden
             int buttonIndex = Array.IndexOf(gridButtons, clickedButton);
 
             // Handle shield selection mode
-            if (shieldSelectionMode)
+            if (_shieldSelectionMode)
             {
                 ApplyShield(buttonIndex);
                 return;
@@ -274,7 +282,7 @@ namespace Core.Hidden
             if (_isOnline) _networkHandler.SendImmuneStatus((byte)position);
             _gameManager.TextAnimations.PopText(gameGUI.GetText(TMPTextType.Announcement), "Piece shielded!", 0.15f, 0.1f, 1.15f);
     
-            shieldSelectionMode = false;
+            _shieldSelectionMode = false;
             powerUps.OnShieldApplied();
         }
         
@@ -654,7 +662,7 @@ namespace Core.Hidden
             _turnTimer = _gameManager.timer;
     
             // Handle shield selection first if active
-            if (shieldSelectionMode)
+            if (_shieldSelectionMode)
             {
                 _ai.ForceShieldSelection(_playerGrid);
                 _ai.ForcePlayerMove(_playerGrid);

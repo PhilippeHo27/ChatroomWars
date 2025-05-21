@@ -13,6 +13,7 @@ namespace Core.Hidden
 
         public enum GameState
         {
+            SetupAI,
             Setup,
             Battle,
             EndGame

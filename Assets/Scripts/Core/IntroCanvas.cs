@@ -20,6 +20,7 @@ namespace Core
         
         [Header("Online Screen Elements")]
         [SerializeField] private TMP_InputField userInputField;
+        [SerializeField] private Image usernameTextBackground;
         [SerializeField] private TMP_Text usernameText;
         [SerializeField] private TMP_Text errorText;
         [SerializeField] private Button confirmNameButton;
@@ -92,11 +93,12 @@ namespace Core
             userInputField.gameObject.SetActive(true);
             confirmNameButton.gameObject.SetActive(true);
             randomizeNameButton.gameObject.SetActive(true);
+            usernameTextBackground.gameObject.SetActive(true);
             usernameText.gameObject.SetActive(true);
             
             // Hide game options until name is confirmed
             websocketChatButton.gameObject.SetActive(false);
-            pongGameButton.gameObject.SetActive(false);
+            //pongGameButton.gameObject.SetActive(false);
             vinceGameButton.gameObject.SetActive(false);
         }
         
@@ -119,7 +121,7 @@ namespace Core
             randomizeNameButton.gameObject.SetActive(true);
             
             websocketChatButton.gameObject.SetActive(false);
-            pongGameButton.gameObject.SetActive(false);
+            //pongGameButton.gameObject.SetActive(false);
             vinceGameButton.gameObject.SetActive(false);
     
             ShowWelcomeScreen();
@@ -143,7 +145,7 @@ namespace Core
                 // Show game options
                 usernameText.text = $"Username: {newUsername}";
                 websocketChatButton.gameObject.SetActive(true);
-                pongGameButton.gameObject.SetActive(true);
+                //pongGameButton.gameObject.SetActive(true);
                 vinceGameButton.gameObject.SetActive(true);
             }
             else
@@ -156,17 +158,23 @@ namespace Core
         {
             string[] names = new string[]
             {
-                "Apex", "Blaze", "Cipher", "Dusk", "Echo", 
-                "Frost", "Ghost", "Havoc", "Inferno", "Jolt",
-                "Krypto", "Luna", "Mist", "Neon", "Onyx",
-                "Pulse", "Quake", "Rogue", "Shadow", "Titan",
-                "Umbra", "Vortex", "Wraith", "Xenon", "Yeti",
-                "Zephyr", "Astro", "Bolt", "Comet", "Drift",
-                "Ember", "Flare", "Glitch", "Hex", "Iris",
-                "Jinx", "Karma", "Lyric", "Myth", "Nova",
-                "Orion", "Phoenix", "Quantum", "Razor", "Spark",
-                "Tempest", "Ultra", "Venom", "Warp", "Zero"
+                // 10 chatroom
+                "CodeJunkie", "ByteMaster", "ScriptLord", "DataMiner", "NetSurfer", 
+                "LogicBolt", "ThreadWeaver", "BinaryBard", "AlgorithmGuy", "SyntaxHero",
+                // 10 gamers
+                "ApexPredator", "BlazeRunner", "CipherBlade", "DuskFang", "EchoStrike",
+                "FrostNova", "GhostHunter", "HavocAgent", "InfernoZero", "JoltShock",
+                // 10 wow
+                "IronhideMarauder", "Stonebreaker", "GrimAxe", "Thunderhoof", "Bloodfist",
+                "VoidCaller", "ShadowCrawler", "Frostbinder", "Earthshaker", "Stormbringer",
+                // 10 Normies
+                "Henry", "Sarah", "Michael", "Jessica", "David",
+                "Emily", "James", "Ashley", "Robert", "Megan",
+                // 10 Futuristic
+                "CommanderShepard", "TaliZorah", "GarrusVakarian", "LiaraTsoni", "Wrex",
+                "Grunt", "MirandaLawson", "JacobTaylor", "MordinSolus", "EDI" 
             };
+
 
             string randomName = names[Random.Range(0, names.Length)];
     
@@ -188,39 +196,6 @@ namespace Core
             GameManager.Instance.playingAgainstAI = false;
             WebSocketNetworkHandler.Instance.Connect();
             StartCoroutine(ConnectWithRetries(sceneName, 3));
-        }
-        
-        private IEnumerator CheckConnectionAndLoad(string sceneName)
-        {
-            errorText.text = "Connecting...";
-    
-            // Wait for up to 5 seconds for connection to establish
-            float timeoutDuration = 5.0f;
-            float elapsed = 0;
-    
-            while (!WebSocketNetworkHandler.Instance.IsConnected && elapsed < timeoutDuration)
-            {
-                yield return new WaitForSeconds(0.2f);
-                elapsed += 0.2f;
-            }
-
-            if (WebSocketNetworkHandler.Instance.IsConnected)
-            {
-                // Connection successful
-                var chatMessage = new StringPacket
-                {
-                    Type = PacketType.UserInfo,
-                    Text = _savedUsername
-                };
-                WebSocketNetworkHandler.Instance.SendWebSocketPackage(chatMessage);
-        
-                yield return new WaitForSeconds(0.2f);
-                SceneLoader.Instance.LoadScene(sceneName);
-            }
-            else
-            {
-                GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server!");
-            }
         }
         
         private IEnumerator ConnectWithRetries(string sceneName, int maxRetries = 2)

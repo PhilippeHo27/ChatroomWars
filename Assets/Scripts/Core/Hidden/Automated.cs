@@ -82,7 +82,7 @@ namespace Core.Hidden
             }
             else
             {
-                _gameRef.shieldSelectionMode = false;
+                _gameRef.ShieldSelectionMode = false;
             }
         }
 

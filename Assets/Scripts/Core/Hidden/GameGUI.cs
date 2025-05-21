@@ -12,7 +12,10 @@ namespace Core.Hidden
     public class GameGUI : MonoBehaviour
     {
         #region Serialized Fields
-        [Header("Canvas Groups")]
+
+        [Header("Canvas Groups")] [SerializeField]
+        private CanvasGroup introCanvasOfflineGroup;
+
         [SerializeField] private CanvasGroup setupCanvasGroup;
         [SerializeField] private CanvasGroup battleCanvasGroup;
         [SerializeField] private CanvasGroup endGameCanvasGroup;
@@ -21,13 +24,16 @@ namespace Core.Hidden
         [SerializeField] private CanvasGroup mainPage;
         [SerializeField] private CanvasGroup readyPage;
 
-        [Header("Game Boards")]
-        [SerializeField] private GameObject playerBoard;
+        [Header("Game Boards")] [SerializeField]
+        private GameObject playerBoard;
+
         [SerializeField] private GameObject opponentBoard;
         [SerializeField] private Image[] gridButtonImages = new Image[9];
         [SerializeField] private Image[] otherBoard = new Image[9];
-        
-        [Header("UI Text Elements")]
+
+        [Header("UI Text Elements")] [SerializeField]
+        private TMP_Text debugText;
+
         [SerializeField] private TMP_Text countdownText;
         [SerializeField] private TMP_Text playerTurnText;
         [SerializeField] private TMP_Text opponentTurnText;
@@ -41,34 +47,37 @@ namespace Core.Hidden
         [SerializeField] private TMP_Text playAgainText;
         private Dictionary<TMPTextType, TMP_Text> _textElements;
 
-        [Header("Game End UI")]
-        [SerializeField] private Image[] myGridImages = new Image[9];
+        [Header("Game End UI")] [SerializeField]
+        private Image[] myGridImages = new Image[9];
+
         [SerializeField] private Image[] opponentGridImages = new Image[9];
-        
-        [Header("Timer")]
-        [SerializeField] private Image timerFill;
-        public Image TimerFill => timerFill ;
-        
-        [Header("Cursor")]
-        [SerializeField] private Texture2D[] cursorTextures = new Texture2D[2];
-        
-        [Header("Animation Settings")]
-        [SerializeField] private float fadeDuration = 0.5f;
+
+        [Header("Timer")] [SerializeField] private Image timerFill;
+        public Image TimerFill => timerFill;
+
+        [Header("Cursor")] [SerializeField] private Texture2D[] cursorTextures = new Texture2D[2];
+
+        [Header("Animation Settings")] [SerializeField]
+        private float fadeDuration = 0.5f;
+
         [SerializeField] private float slideDuration = 0.5f;
+
         #endregion
 
         #region Properties and References
+
         private GameManager _gameManager;
         private Vector2 _cursorHotspot;
-        
+
         #endregion
 
         #region Unity Lifecycle
+
         private void Awake()
         {
             _gameManager = GameManager.Instance;
             InitializeCursor();
-            
+
             _textElements = new Dictionary<TMPTextType, TMP_Text>
             {
                 { TMPTextType.PlayerName, playerNameText },
@@ -89,15 +98,15 @@ namespace Core.Hidden
             playerNameText.text = PlayerPrefs.GetString("Username", "");
             InitializeCursor();
             InitializeGUIPositions();
-            
+
             Debug.Log(_gameManager.blindModeActive);
-            if(_gameManager.blindModeActive == false) SetSideBySideView(false,true);
+            if (_gameManager.blindModeActive == false) SetSideBySideView(false, true);
         }
 
         #endregion
 
         #region Public Methods
-        
+
         public TMP_Text GetText(TMPTextType tmpTextType)
         {
             return _textElements.GetValueOrDefault(tmpTextType);
@@ -123,21 +132,21 @@ namespace Core.Hidden
         {
             playerTurnText.text = isMyTurn ? "Your Turn" : "Waiting...";
             _gameManager.TextAnimations.PopThenBreathe(playerTurnText.transform);
-            
+
             opponentTurnText.text = isMyTurn ? "Waiting..." : "Their Turn";
             _gameManager.TextAnimations.PopThenBreathe(opponentTurnText.transform);
         }
-        
+
         public void UpdateRoundText(int currentRound)
         {
             currentRoundText.text = $"Current Round {currentRound}";
         }
-        
+
         public void ShowAnnouncement(string message, float scaleAmount = 1.15f)
         {
             _gameManager.TextAnimations.PopText(announcementText, message, 0.15f, 0.1f, scaleAmount);
         }
-        
+
         public void UpdateCursor(int colorIndex)
         {
             if (colorIndex >= 0 && colorIndex < cursorTextures.Length)
@@ -145,31 +154,47 @@ namespace Core.Hidden
                 Cursor.SetCursor(cursorTextures[colorIndex], _cursorHotspot, CursorMode.Auto);
             }
         }
-        
+
         public void UpdateTimer(float currentTime, float totalTime)
         {
             _gameManager.TextAnimations.UpdateTimerWithEffects(timerFill, currentTime, totalTime);
         }
-        
+
         public void ResetTimerVisuals()
         {
             _gameManager.TextAnimations.ResetTimerVisuals(timerFill);
         }
-        
+
+        public void wtfisgoingon()
+        {
+            debugText.text = "??????????????????";
+
+        }
+
         public GameState StateChange(GameState state, bool shouldLerp = true)
         {
             SetAllCanvasesNonInteractable();
 
             switch(state)
             {
+                case GameState.SetupAI:
+                    debugText.text = "Setup AI";
+                    ToggleOfflineCanvas(true);
+                    break;
+
                 case GameState.Setup:
+                    debugText.text = "Setup";
+
                     TransitionCanvas(setupCanvasGroup, true, shouldLerp);
                     TransitionCanvas(battleCanvasGroup, false, false);
                     TransitionCanvas(endGameCanvasGroup, false, false);
                     break;
 
                 case GameState.Battle:
+                    debugText.text = "Battle";
+
                     TransitionCanvas(battleCanvasGroup, true, shouldLerp);
+                    TransitionCanvas(introCanvasOfflineGroup, false, false);
                     TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(endGameCanvasGroup, false, false);
 
@@ -183,6 +208,8 @@ namespace Core.Hidden
                     break;
 
                 case GameState.EndGame:
+                    debugText.text = "end";
+
                     TransitionCanvas(endGameCanvasGroup, true, shouldLerp);
                     TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(battleCanvasGroup, false, false);
@@ -388,6 +415,17 @@ namespace Core.Hidden
             setupCanvasGroup.blocksRaycasts = false;
             battleCanvasGroup.blocksRaycasts = false;
             endGameCanvasGroup.blocksRaycasts = false;
+        }
+
+        public void ToggleOfflineCanvas(bool toggle)
+        {
+            float targetAlpha = toggle ? 1f : 0f;
+            introCanvasOfflineGroup.DOFade(targetAlpha, fadeDuration)
+                .OnComplete(() => {
+                    introCanvasOfflineGroup.interactable = toggle;
+                    introCanvasOfflineGroup.blocksRaycasts = toggle;
+                    Canvas.ForceUpdateCanvases(); // Force update AFTER animation completes
+                });
         }
         
         private void TransitionCanvas(CanvasGroup group, bool active, bool shouldLerp = true)

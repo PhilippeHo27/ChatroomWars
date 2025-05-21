@@ -123,7 +123,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 1024
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -572,7 +572,25 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      7c3c2bd425e0fa6f854d6a2fcefc909d_0: -3867075046697380691
+      7c3c2bd425e0fa6f854d6a2fcefc909d_1: -2747415221475563617
+      7c3c2bd425e0fa6f854d6a2fcefc909d_10: 123523246077922671
+      7c3c2bd425e0fa6f854d6a2fcefc909d_11: 7946462786374925987
+      7c3c2bd425e0fa6f854d6a2fcefc909d_12: 5901692027962787240
+      7c3c2bd425e0fa6f854d6a2fcefc909d_13: 1877969288661367230
+      7c3c2bd425e0fa6f854d6a2fcefc909d_14: 2283517617962224643
+      7c3c2bd425e0fa6f854d6a2fcefc909d_15: -4883751910074529227
+      7c3c2bd425e0fa6f854d6a2fcefc909d_16: 1498503116234869304
+      7c3c2bd425e0fa6f854d6a2fcefc909d_17: -4961180998824100562
+      7c3c2bd425e0fa6f854d6a2fcefc909d_2: -2826966196441766167
+      7c3c2bd425e0fa6f854d6a2fcefc909d_3: -7353623513362366425
+      7c3c2bd425e0fa6f854d6a2fcefc909d_4: -4269294671681503564
+      7c3c2bd425e0fa6f854d6a2fcefc909d_5: -5959488748325889719
+      7c3c2bd425e0fa6f854d6a2fcefc909d_6: -5752344945889264193
+      7c3c2bd425e0fa6f854d6a2fcefc909d_7: 4845752020125328657
+      7c3c2bd425e0fa6f854d6a2fcefc909d_8: 2630193161152343663
+      7c3c2bd425e0fa6f854d6a2fcefc909d_9: 5114956940739555856
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

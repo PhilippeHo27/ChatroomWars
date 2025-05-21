@@ -113,7 +113,7 @@ namespace Core.Hidden
         {
             if (_greenPowerupUsed || !IsPlayerTurn) return;
 
-            hiddenMain.shieldSelectionMode = true;
+            hiddenMain.ShieldSelectionMode = true;
             _greenPowerupUsed = true;
 
             _gameManager.TextAnimations.RainbowText("Shield used", specialUsedText);
