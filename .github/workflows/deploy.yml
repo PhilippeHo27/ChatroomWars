@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'webgl/**'
+      - 'BuildWebGL/**'
 
 jobs:
   deploy:
