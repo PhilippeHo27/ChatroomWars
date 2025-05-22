@@ -4,8 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'BuildWebGL/**'
-
+      - 'BuildWebGL/**' 
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,4 +19,4 @@ jobs:
           
       - name: Deploy to Server
         run: |
-          rsync -avz --delete webgl/ phil@3.99.70.5:~/projects/workshop/client/
+          rsync -avz --delete BuildWebGL/ phil@3.99.70.5:~/projects/workshop/client/
