@@ -31,9 +31,7 @@ namespace Core.Hidden
         [SerializeField] private Image[] gridButtonImages = new Image[9];
         [SerializeField] private Image[] otherBoard = new Image[9];
 
-        [Header("UI Text Elements")] [SerializeField]
-        private TMP_Text debugText;
-
+        [Header("UI Text Elements")]
         [SerializeField] private TMP_Text countdownText;
         [SerializeField] private TMP_Text playerTurnText;
         [SerializeField] private TMP_Text opponentTurnText;
@@ -165,12 +163,6 @@ namespace Core.Hidden
             _gameManager.TextAnimations.ResetTimerVisuals(timerFill);
         }
 
-        public void wtfisgoingon()
-        {
-            debugText.text = "??????????????????";
-
-        }
-
         public GameState StateChange(GameState state, bool shouldLerp = true)
         {
             SetAllCanvasesNonInteractable();
@@ -178,21 +170,16 @@ namespace Core.Hidden
             switch(state)
             {
                 case GameState.SetupAI:
-                    debugText.text = "Setup AI";
                     ToggleOfflineCanvas(true);
                     break;
 
                 case GameState.Setup:
-                    debugText.text = "Setup";
-
                     TransitionCanvas(setupCanvasGroup, true, shouldLerp);
                     TransitionCanvas(battleCanvasGroup, false, false);
                     TransitionCanvas(endGameCanvasGroup, false, false);
                     break;
 
                 case GameState.Battle:
-                    debugText.text = "Battle";
-
                     TransitionCanvas(battleCanvasGroup, true, shouldLerp);
                     TransitionCanvas(introCanvasOfflineGroup, false, false);
                     TransitionCanvas(setupCanvasGroup, false, false);
@@ -208,8 +195,6 @@ namespace Core.Hidden
                     break;
 
                 case GameState.EndGame:
-                    debugText.text = "end";
-
                     TransitionCanvas(endGameCanvasGroup, true, shouldLerp);
                     TransitionCanvas(setupCanvasGroup, false, false);
                     TransitionCanvas(battleCanvasGroup, false, false);

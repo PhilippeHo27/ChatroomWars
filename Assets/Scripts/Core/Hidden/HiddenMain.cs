@@ -86,7 +86,6 @@ namespace Core.Hidden
 
         private void Start()
         {
-            gameGUI.wtfisgoingon();
             _playAgainstAI = _gameManager.playingAgainstAI;
             _isOnline = _gameManager.isOnline;
             _numberOfRounds = _gameManager.numberOfRounds;
