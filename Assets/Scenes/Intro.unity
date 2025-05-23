@@ -1024,7 +1024,7 @@ MonoBehaviour:
   playingAgainstAI: 0
   blindModeActive: 0
   isOnline: 0
-  numberOfRounds: 2
+  numberOfRounds: 8
   timer: 8
 --- !u!1 &391945928
 GameObject:
