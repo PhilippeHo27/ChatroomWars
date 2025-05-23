@@ -1,9 +1,9 @@
 var buildUrl = "Build";
 var loaderUrl = buildUrl + "/BuildWebGL.loader.js";
 var config = {
-  dataUrl: buildUrl + "/BuildWebGL.data.br",
-  frameworkUrl: buildUrl + "/BuildWebGL.framework.js.br",
-  codeUrl: buildUrl + "/BuildWebGL.wasm.br",
+  dataUrl: buildUrl + "/BuildWebGL.data.gz",
+  frameworkUrl: buildUrl + "/BuildWebGL.framework.js.gz",
+  codeUrl: buildUrl + "/BuildWebGL.wasm.gz",
   memoryUrl: buildUrl + "/",
   symbolsUrl: buildUrl + "/",
   streamingAssetsUrl: "StreamingAssets",

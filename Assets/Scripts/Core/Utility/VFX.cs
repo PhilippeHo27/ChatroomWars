@@ -157,7 +157,7 @@ namespace Core.Utility
             GameObject vfxObject = vfxInstance.InstanceObject;
             ParticleSystem ps = vfxInstance.ParticleSys;
             
-            Debug.Log($"VFX debug: '{vfxObject.name}' Duration={ps.main.duration}s");
+            //Debug.Log($"VFX debug: '{vfxObject.name}' Duration={ps.main.duration}s");
 
             
             vfxObject.transform.position = targetTransform.position;

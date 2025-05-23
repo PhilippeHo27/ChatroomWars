@@ -1024,8 +1024,8 @@ MonoBehaviour:
   playingAgainstAI: 0
   blindModeActive: 0
   isOnline: 0
-  numberOfRounds: 8
-  timer: 10
+  numberOfRounds: 2
+  timer: 8
 --- !u!1 &391945928
 GameObject:
   m_ObjectHideFlags: 0
@@ -5177,7 +5177,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transition: {fileID: 354816458}
-  transitionTime: 1
+  transitionTime: 0.5
   canvasGroup: {fileID: 667769842}
 --- !u!1 &1793676409
 GameObject:

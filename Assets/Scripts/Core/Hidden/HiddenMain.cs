@@ -114,13 +114,14 @@ namespace Core.Hidden
         {
             _isMyTurn = isMyTurn;
             DOTween.KillAll();
-            
+    
             if (_isMyTurn) _gameManager.TextAnimations.PopText(gameGUI.GetText(TMPTextType.PlayerTurn), "You start!");
             else _gameManager.TextAnimations.Typewriter(gameGUI.GetText(TMPTextType.PlayerTurn), "Waiting...");
-            
+    
             _gameState = gameGUI.StateChange(GameState.Battle);
             if (_isMyTurn) _timerCoroutine = StartCoroutine(TimerCoroutine());
         }
+
 
         private void StartGameAI()
         {
@@ -149,6 +150,7 @@ namespace Core.Hidden
         }
         private void EndGame()
         {
+            if(_timerCoroutine != null) StopCoroutine(_timerCoroutine);   
             StartCoroutine(DelayedEndGame());
         }
         private IEnumerator DelayedEndGame()
@@ -380,7 +382,6 @@ namespace Core.Hidden
         private void SendNetworkMoves(int buttonIndex, string originalColor, bool isLocalPlayerMove)
         {
             if (!isLocalPlayerMove || !_isOnline) return;
-            
             if (_isInExtraTurn)
             {
                 _networkHandler.SendMoves(_extraTurnMoves, _extraTurnColors);
@@ -412,6 +413,8 @@ namespace Core.Hidden
 
         private void ChangeTurn()
         {
+            
+            Debug.Log("change turn is called");
             _isMyTurn = !_isMyTurn;
             gameGUI.UpdateTurnIndicators(_isMyTurn);
             HandleTimerBasedOnGameState();
@@ -530,8 +533,6 @@ namespace Core.Hidden
             }
         }
 
-
-
         private (bool shouldClearPlayer1, bool shouldClearPlayer2) ResolvingComparison(string player1Color, string player2Color)
         {
             if (player1Color == player2Color)
@@ -561,7 +562,7 @@ namespace Core.Hidden
                 gridButtonImages[position].color = whiteColor;
                 _playerGrid.Marks[position] = false;
                 _playerGrid.Color[position] = "";
-                Debug.Log($"ClearSquare: Playing effect at position {position} on player grid");
+                //Debug.Log($"ClearSquare: Playing effect at position {position} on player grid");
             }
             else
             {
@@ -668,6 +669,8 @@ namespace Core.Hidden
             }
             else
             {
+                _totalTurns = _isMyTurn ? 0 : 1;
+                Debug.Log("forced to move?");
                 _ai.ForcePlayerMove(_playerGrid);
             }
         }
@@ -709,7 +712,7 @@ namespace Core.Hidden
             ResolveReceivedMove(index, color);
     
             // Increment turn counter for online mode only
-            _totalTurns++;
+            IncrementTurnCounter();
     
             // Check if this was the final turn
             if (_totalTurns >= _maxTurns)
@@ -729,7 +732,7 @@ namespace Core.Hidden
             }
     
             // Increment turn counter for online mode only
-            _totalTurns++;
+            IncrementTurnCounter();
     
             // Check if this was the final turn
             if (_totalTurns >= _maxTurns)
