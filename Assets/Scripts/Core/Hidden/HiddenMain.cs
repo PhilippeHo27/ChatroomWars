@@ -89,6 +89,7 @@ namespace Core.Hidden
             _playAgainstAI = _gameManager.playingAgainstAI;
             _isOnline = _gameManager.isOnline;
             _numberOfRounds = _gameManager.numberOfRounds;
+            Debug.Log(_numberOfRounds);
 
             InitializeGameState();
             InitButtons();
@@ -413,8 +414,6 @@ namespace Core.Hidden
 
         private void ChangeTurn()
         {
-            
-            Debug.Log("change turn is called");
             _isMyTurn = !_isMyTurn;
             gameGUI.UpdateTurnIndicators(_isMyTurn);
             HandleTimerBasedOnGameState();
@@ -503,10 +502,11 @@ namespace Core.Hidden
             Transform effectTransform = clearPlayer1 ? gridButtonImages[position].transform : otherBoard[position].transform;
 
             // Play the effect only if it's not clearPlayer2
-            if (!clearPlayer2)
+            if (clearPlayer1)
             {
                 GameManager.Instance.VFX.PlayEffectAt(effectTransform, 1, 1.5f);
             }
+
     
             // Small delay
             yield return new WaitForSeconds(0.1f);
@@ -669,8 +669,6 @@ namespace Core.Hidden
             }
             else
             {
-                _totalTurns = _isMyTurn ? 0 : 1;
-                Debug.Log("forced to move?");
                 _ai.ForcePlayerMove(_playerGrid);
             }
         }
