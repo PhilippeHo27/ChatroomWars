@@ -70,8 +70,6 @@ namespace Core
             InitializeCursorBlink();
             Invoke(nameof(InitialCursorPositioning), 0.5f);
             SetupButtons();
-
-
         }
 
         private void SetupButtons()

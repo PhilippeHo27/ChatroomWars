@@ -19,11 +19,14 @@ namespace Core.WebSocket
 
         // ## Core Components
         private NativeWebSocket.WebSocket _webSocket;
+        private readonly Dictionary<PacketType, TaskCompletionSource<bool>> _pendingRequests = new();
+        
         private Matchmaking _matchmaking;
         public Matchmaking Matchmaking { get => _matchmaking; set => _matchmaking = value; }
 
         public bool IsConnected => _webSocket?.State == WebSocketState.Open;
         private bool _isConnecting;
+        public bool IsConnecting => _isConnecting;
 
         // ## Handlers
         private ChatHandler _chatHandler;
@@ -183,30 +186,84 @@ namespace Core.WebSocket
         
         #region Sending
         
-        public void SendWebSocketPackage<T>(T package) where T : BaseNetworkPacket
+        public void SendPacket<T>(T packet) where T : BaseNetworkPacket
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
                 Debug.LogError("Cannot send message: WebSocket is not connected");
                 return;
             }
-
-            package.SenderId = _clientId;
-
-            try 
+        
+            packet.SenderId = _clientId;
+        
+            // Fire-and-forget the async operation
+            _ = SendPacketInternalAsync(packet);
+        }
+        
+        
+        public async Task<bool> SendPacketReliable<T>(T packet) where T : BaseNetworkPacket
+        {
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
-                byte[] bytes = MessagePackSerializer.Serialize(package);
-                SendWebSocketPackageAsync(bytes).ContinueWith(task => 
+                Debug.LogError("Cannot send message: WebSocket is not connected");
+                return false;
+            }
+        
+            // Set up response waiting
+            var tcs = new TaskCompletionSource<bool>();
+            _pendingRequests[packet.Type] = tcs;
+        
+            packet.SenderId = _clientId;
+        
+            try
+            {
+                // Send the packet
+                await SendPacketInternalAsync(packet);
+        
+                // Wait for server response with timeout
+                var timeoutTask = Task.Delay(5000);
+                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+        
+                // Clean up
+                _pendingRequests.Remove(packet.Type);
+        
+                if (completedTask == timeoutTask)
                 {
-                    if (task.IsFaulted)
-                    {
-                        Debug.LogError($"Send failed: {task.Exception?.Message}");
-                    }
-                });
+                    Debug.LogError($"{packet.Type} confirmation timed out");
+                    return false;
+                }
+        
+                return await tcs.Task;
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Serialization failed: {ex}");
+                _pendingRequests.Remove(packet.Type);
+                Debug.LogError($"Send failed: {ex.Message}");
+                return false;
+            }
+        }
+        
+        
+        
+        private async Task SendPacketInternalAsync<T>(T packet) where T : BaseNetworkPacket
+        {
+            try
+            {
+                byte[] bytes = MessagePackSerializer.Serialize(packet);
+        
+                if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+                {
+                    await _webSocket.Send(bytes);
+                }
+                else
+                {
+                    throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Serialization or send failed: {ex.Message}");
+                throw; // Re-throw so reliable version can handle it
             }
         }
         
@@ -214,28 +271,61 @@ namespace Core.WebSocket
         {
             Debug.Log($"Sending package of type: {package.GetType().Name}");
             Debug.Log($"Package contents: SenderId={package.SenderId}, Type={package.Type}");
-    
+        
             if (package is StringPacket chatData)
             {
                 Debug.Log($"Chat text: {chatData.Text}");
             }
-    
+        
             byte[] bytes = MessagePackSerializer.Serialize(package.GetType(), package);
             Debug.Log($"Serialized bytes: [{string.Join(", ", bytes)}]");
         }
-
         
-        private async Task SendWebSocketPackageAsync(byte[] bytes)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                await _webSocket.Send(bytes);
-            }
-            else
-            {
-                throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
-            }
-        }
+        
+        
+        
+        //
+        // public void SendPacket<T>(T package) where T : BaseNetworkPacket
+        // {
+        //     if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+        //     {
+        //         Debug.LogError("Cannot send message: WebSocket is not connected");
+        //         return;
+        //     }
+        //
+        //     package.SenderId = _clientId;
+        //
+        //     try 
+        //     {
+        //         byte[] bytes = MessagePackSerializer.Serialize(package);
+        //         SendWebSocketPackageAsync(bytes).ContinueWith(task => 
+        //         {
+        //             if (task.IsFaulted)
+        //             {
+        //                 Debug.LogError($"Send failed: {task.Exception?.Message}");
+        //             }
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Debug.LogError($"Serialization failed: {ex}");
+        //     }
+        // }
+        //
+
+        //
+        //
+        // private async Task SendWebSocketPackageAsync(byte[] bytes)
+        // {
+        //     if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+        //     {
+        //         await _webSocket.Send(bytes);
+        //     }
+        //     else
+        //     {
+        //         throw new InvalidOperationException("WebSocket is not connected. Cannot send message.");
+        //     }
+        // }
 
         #endregion
 
@@ -355,5 +445,6 @@ namespace Core.WebSocket
         }
         
         #endregion
+
     }
 }
