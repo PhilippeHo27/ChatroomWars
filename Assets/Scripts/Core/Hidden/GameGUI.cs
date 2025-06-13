@@ -97,7 +97,7 @@ namespace Core.Hidden
             InitializeCursor();
             InitializeGUIPositions();
 
-            Debug.Log(_gameManager.blindModeActive);
+            //Debug.Log(_gameManager.blindModeActive);
             if (_gameManager.blindModeActive == false) SetSideBySideView(false, true);
         }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Core.Hidden;
 using NativeWebSocket;
@@ -14,7 +15,9 @@ namespace Core.WebSocket
         // ## Constants
         private const string ServerUrlHttPs = "wss://sargaz.popnux.com/ws";
         private const string ServerUrlHttp = "ws://18.226.150.199:8080"; 
-        private const string ServerUrlUbuntu = "wss://sargaz.popnux.com/ws";
+        // private const string ServerUrlUbuntu = "wss://sargaz.popnux.com/ws";
+        private const string ServerUrlUbuntu = "ws://philippeho.popnux.com:8080";
+
         private const string ServerUrlLocal = "ws://localhost:8080";
 
         // ## Core Components
@@ -148,6 +151,8 @@ namespace Core.WebSocket
         private void HandleOpen()
         {
             Debug.Log("Connected");
+            Debug.Log($"WebSocket State: {_webSocket?.State}");
+            Debug.Log($"Connection timestamp: {DateTime.Now}");
         }
         private void HandleError(string error)
         {
@@ -242,8 +247,6 @@ namespace Core.WebSocket
                 return false;
             }
         }
-        
-        
         
         private async Task SendPacketInternalAsync<T>(T packet) where T : BaseNetworkPacket
         {
@@ -399,13 +402,32 @@ namespace Core.WebSocket
 
         private void HandleServerResponse(byte[] data)
         {
+            Debug.Log(" am i receiving anything?");
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
-            if (decoded != null && decoded.Length >= 3)
+            Debug.Log(decoded);
+
+            if (decoded != null && decoded.Length >= 4)
             {
                 bool response = Convert.ToBoolean(decoded[2]);
+                PacketType originalPacketType = (PacketType)Convert.ToInt32(decoded[3]);
+
+                // Match response to the correct pending request
+                if (_pendingRequests.TryGetValue(originalPacketType, out var tcs))
+                {
+                    tcs.SetResult(response);
+                    _pendingRequests.Remove(originalPacketType);
+                    Debug.Log($"Resolved {originalPacketType} request with response: {response}");
+                }
+                else
+                {
+                    Debug.LogWarning($"No pending request found for {originalPacketType}");
+                }
+
                 OnServerResponse?.Invoke(response);
             }
         }
+
+
 
         
         private void StartGameConfirmationFromServer(byte[] data)
@@ -429,6 +451,7 @@ namespace Core.WebSocket
         
         private void HandleUserInfo(byte[] data)
         {
+            Debug.Log(" handle user info called?");
             // We could scale this up and set the dictionnary into its own class if we need more than just user info + his name
             var decoded = MessagePackSerializer.Deserialize<object[]>(data);
             if (decoded != null && decoded.Length >= 3)
@@ -439,6 +462,7 @@ namespace Core.WebSocket
                     foreach (var user in userList)
                     {
                         _users[user.UserId] = user.UserName;
+                        Debug.Log(user.UserName);
                     }
                 }
             }

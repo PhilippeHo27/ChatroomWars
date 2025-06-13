@@ -45,6 +45,8 @@ namespace Core
 
         private void Start()
         {
+            //WebSocketNetworkHandler.Instance.Connect();
+
             SetupButtonListeners();
             _savedUsername = PlayerPrefs.GetString("Username", "");
             ShowWelcomeScreen();
@@ -68,6 +70,11 @@ namespace Core
             
             websocketChatButton.onClick.AddListener(() => _ = ConnectToWebsocketSafe("ChatRoom"));
             vinceGameButton.onClick.AddListener(() => _ = ConnectToWebsocketSafe("HiddenGame"));
+            //vinceGameButton.onClick.AddListener(() => ConnectToWebsocketFireAndForget("HiddenGame"));
+            //vinceGameButton.onClick.AddListener(()=> ConnectToWebsocket("HiddenGame"));
+            //vinceGameButton.onClick.AddListener(WebSocketNetworkHandler.Instance.Connect);
+
+            
             offlineScene.onClick.AddListener(() => SceneLoader.Instance.LoadScene("OfflinePrototype"));
             offlineVinceGame.onClick.AddListener(LoadVinceOfflineGame);
             
@@ -191,21 +198,21 @@ namespace Core
             group.blocksRaycasts = active;
         }
         
-        // private void ConnectToWebsocket(string sceneName)
-        // {
-        //     if (WebSocketNetworkHandler.Instance.IsConnected || WebSocketNetworkHandler.Instance.IsConnecting)
-        //     {
-        //         //Debug.Log("Already connected or connecting. Ignoring connection request.");
-        //         return;
-        //     }
-        //
-        //     GameManager.Instance.isOnline = true;
-        //     GameManager.Instance.blindModeActive = true;
-        //     GameManager.Instance.playingAgainstAI = false;
-        //
-        //     // Remove the duplicate Connect() call here
-        //     StartCoroutine(ConnectWithRetries(sceneName, 3));
-        // }
+        private void ConnectToWebsocket(string sceneName)
+        {
+            if (WebSocketNetworkHandler.Instance.IsConnected || WebSocketNetworkHandler.Instance.IsConnecting)
+            {
+                //Debug.Log("Already connected or connecting. Ignoring connection request.");
+                return;
+            }
+        
+            GameManager.Instance.isOnline = true;
+            GameManager.Instance.blindModeActive = true;
+            GameManager.Instance.playingAgainstAI = false;
+        
+            // Remove the duplicate Connect() call here
+            StartCoroutine(ConnectWithRetriesOld(sceneName, 3));
+        }
         
         // private async void ConnectToWebsocket(string sceneName)
         // {
@@ -221,6 +228,73 @@ namespace Core
         //     bool success = await ConnectWithRetries(sceneName, 3);
         // }
         //
+        
+        private async void ConnectToWebsocketFireAndForget(string sceneName)
+        {
+            try
+            {
+                if (WebSocketNetworkHandler.Instance.IsConnected || WebSocketNetworkHandler.Instance.IsConnecting)
+                {
+                    return;
+                }
+
+                GameManager.Instance.isOnline = true;
+                GameManager.Instance.blindModeActive = true;
+                GameManager.Instance.playingAgainstAI = false;
+
+                bool success = await ConnectWithRetriesFireAndForget(sceneName, 3);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Connection failed: {ex.Message}");
+                GameManager.Instance.TextAnimations.PopText(errorText, "Connection failed!");
+            }
+        }
+        
+        private async Task<bool> ConnectWithRetriesFireAndForget(string sceneName, int maxRetries = 2)
+        {
+            int retryCount = 0;
+            bool connected = false;
+
+            while (!connected && retryCount <= maxRetries)
+            {
+                errorText.text = retryCount > 0 ? $"Retrying connection ({retryCount}/{maxRetries})..." : "Connecting...";
+
+                WebSocketNetworkHandler.Instance.Connect();
+
+                var timeoutDuration = TimeSpan.FromSeconds(3.0f);
+                var startTime = DateTime.Now;
+
+                while (!WebSocketNetworkHandler.Instance.IsConnected && DateTime.Now - startTime < timeoutDuration)
+                {
+                    await Task.Delay(200);
+                }
+
+                connected = WebSocketNetworkHandler.Instance.IsConnected;
+
+                if (!connected)
+                {
+                    retryCount++;
+                    await Task.Delay(500);
+                }
+            }
+
+            if (!connected)
+            {
+                GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server!");
+                return false;
+            }
+
+            // Fire and forget - no waiting for confirmations
+            // WebSocketNetworkHandler.Instance.SendPacket(new StringPacket { Type = PacketType.UserInfo, Text = _savedUsername });
+            // await Task.Delay(500);
+            //
+            // WebSocketNetworkHandler.Instance.SendPacket(new StringPacket { Type = PacketType.RoomJoin, Text = "lobbyRoom" });
+            // await Task.Delay(500);
+
+            SceneLoader.Instance.LoadScene(sceneName);
+            return true;
+        }
         
         private async Task ConnectToWebsocketSafe(string sceneName)
         {
@@ -289,6 +363,8 @@ namespace Core
             bool usernameAccepted = await WebSocketNetworkHandler.Instance.SendPacketReliable(
                 new StringPacket { Type = PacketType.UserInfo, Text = _savedUsername }
             );
+            
+            Debug.Log(usernameAccepted);
 
             if (!usernameAccepted)
             {
@@ -297,7 +373,7 @@ namespace Core
             }
 
             Debug.Log("Username accepted by server");
-    
+
             // Join lobby and wait for confirmation
             bool lobbyJoined = await WebSocketNetworkHandler.Instance.SendPacketReliable(
                 new StringPacket { Type = PacketType.RoomJoin, Text = "lobbyRoom" }
@@ -315,78 +391,66 @@ namespace Core
 
 
 
-        // private IEnumerator ConnectWithRetries(string sceneName, int maxRetries = 2)
-        // {
-        //     int retryCount = 0;
-        //     bool connected = false;
-        //
-        //     while (!connected && retryCount <= maxRetries)
-        //     {
-        //         errorText.text = retryCount > 0 ? $"Retrying connection ({retryCount}/{maxRetries})..." : "Connecting...";
-        //
-        //         WebSocketNetworkHandler.Instance.Connect();
-        //
-        //         // Wait for connection with timeout
-        //         float timeoutDuration = 3.0f;
-        //         float elapsed = 0;
-        //
-        //         while (!WebSocketNetworkHandler.Instance.IsConnected && elapsed < timeoutDuration)
-        //         {
-        //             yield return new WaitForSeconds(0.2f);
-        //             elapsed += 0.2f;
-        //         }
-        //
-        //         connected = WebSocketNetworkHandler.Instance.IsConnected;
-        //
-        //         if (!connected)
-        //         {
-        //             retryCount++;
-        //             yield return new WaitForSeconds(0.5f); // Brief pause between retries
-        //         }
-        //     }
-        //
-        //     if (connected)
-        //     {
-        //         // Connection successful
-        //         var chatMessage = new StringPacket
-        //         {
-        //             Type = PacketType.UserInfo,
-        //             Text = _savedUsername
-        //         };
-        //         WebSocketNetworkHandler.Instance.SendPacket(chatMessage);
-        //         bool usernameAccepted = await WebSocketNetworkHandler.Instance.SendUserInfoAndWaitForConfirmation(_savedUsername);
-        //         
-        //         if (usernameAccepted)
-        //         {
-        //             Debug.Log("Username accepted by server");
-        //             SceneLoader.Instance.LoadScene(sceneName);
-        //         }
-        //         else
-        //         {
-        //             Debug.LogError("Server rejected username or timed out");
-        //             // Show error to user, don't proceed
-        //         }
-        //         
-        //         yield return new WaitForSeconds(0.1f);
-        //
-        //         // Auto-join general lobby
-        //         var joinLobbyMessage = new StringPacket
-        //         {
-        //             Type = PacketType.RoomJoin,
-        //             Text = "lobbyRoom"  // Your permanent room
-        //         };
-        //         WebSocketNetworkHandler.Instance.SendPacket(joinLobbyMessage);
-        //         
-        //
-        //         yield return new WaitForSeconds(0.2f);
-        //         SceneLoader.Instance.LoadScene(sceneName);
-        //         
-        //     }
-        //     else
-        //     {
-        //         GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server after multiple attempts!");
-        //     }
-        // }
+        private IEnumerator ConnectWithRetriesOld(string sceneName, int maxRetries = 2)
+        {
+            int retryCount = 0;
+            bool connected = false;
+        
+            while (!connected && retryCount <= maxRetries)
+            {
+                errorText.text = retryCount > 0 ? $"Retrying connection ({retryCount}/{maxRetries})..." : "Connecting...";
+        
+                WebSocketNetworkHandler.Instance.Connect();
+        
+                // Wait for connection with timeout
+                float timeoutDuration = 3.0f;
+                float elapsed = 0;
+        
+                while (!WebSocketNetworkHandler.Instance.IsConnected && elapsed < timeoutDuration)
+                {
+                    yield return new WaitForSeconds(0.2f);
+                    elapsed += 0.2f;
+                }
+        
+                connected = WebSocketNetworkHandler.Instance.IsConnected;
+        
+                if (!connected)
+                {
+                    retryCount++;
+                    yield return new WaitForSeconds(0.5f); // Brief pause between retries
+                }
+            }
+        
+            if (connected)
+            {
+                // Connection successful
+                var chatMessage = new StringPacket
+                {
+                    Type = PacketType.UserInfo,
+                    Text = _savedUsername
+                };
+                WebSocketNetworkHandler.Instance.SendPacket(chatMessage);
+                
+                yield return new WaitForSeconds(0.1f);
+        
+                // Auto-join general lobby
+                var joinLobbyMessage = new StringPacket
+                {
+                    Type = PacketType.RoomJoin,
+                    Text = "lobbyRoom"  // Your permanent room
+                };
+                WebSocketNetworkHandler.Instance.SendPacket(joinLobbyMessage);
+                
+        
+                yield return new WaitForSeconds(0.2f);
+                SceneLoader.Instance.LoadScene(sceneName);
+                
+            }
+            else
+            {
+                GameManager.Instance.TextAnimations.PopText(errorText, "Failed to connect to server after multiple attempts!");
+            }
+        }
 
         private void LoadVinceOfflineGame()
         {

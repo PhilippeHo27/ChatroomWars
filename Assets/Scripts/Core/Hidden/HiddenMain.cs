@@ -89,7 +89,6 @@ namespace Core.Hidden
             _playAgainstAI = _gameManager.playingAgainstAI;
             _isOnline = _gameManager.isOnline;
             _numberOfRounds = _gameManager.numberOfRounds;
-            Debug.Log(_numberOfRounds);
 
             InitializeGameState();
             InitButtons();
